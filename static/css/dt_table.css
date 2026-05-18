@@ -1,0 +1,208 @@
+:root {
+    --accent: #000000;
+    --accent-light: #c6c6c6;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --day-color: #000000;
+    --night-color: #000000;
+}
+
+* {
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: #f1f5f9;
+    background-image:
+        radial-gradient(circle at 10% 10%, rgba(14, 165, 233, 0.08) 0%, transparent 30%),
+        radial-gradient(circle at 90% 90%, rgba(56, 189, 248, 0.05) 0%, transparent 30%);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+}
+
+/* --- ХЕДЕР --- */
+.page-header {
+    width: 100%;
+    max-width: 1800px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 0 10px;
+}
+
+.logo-text {
+    font-weight: 900;
+    font-size: 1.8rem;
+    letter-spacing: -1px;
+    text-transform: uppercase;
+    border-left: 8px solid var(--accent);
+    padding-left: 15px;
+    line-height: 1.1;
+}
+
+.date-picker-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.date-picker-container label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.date-input {
+    padding: 10px 15px;
+    border-radius: 12px;
+    border: 2px solid var(--accent-light);
+    font-weight: 700;
+    color: var(--text-main);
+    outline: none;
+}
+
+/* --- ТАБЛИЦА --- */
+.container {
+    width: 100%;
+    max-width: 1800px;
+}
+
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 25px;
+    border: 1px solid #000;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05);
+}
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    /* Фиксированная раскладка для одинаковой ширины колонок */
+    table-layout: fixed;
+}
+
+th {
+    text-align: center;
+    padding: 12px 5px;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 800;
+    border-bottom: 1px solid var(--accent-light);
+    word-wrap: break-word;
+}
+
+/* Стиль для группового заголовка */
+.group-header {
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--text-main);
+    border-bottom: 2px solid var(--accent-light) !important;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+}
+
+td {
+    padding: 8px 5px;
+    background: rgba(255, 255, 255, 0.4);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    text-align: center;
+}
+
+/* Ширина колонок */
+.col-time {
+    width: 140px;
+}
+
+.col-saw {
+    width: 80px;
+}
+
+.col-prod {
+    width: 100px;
+}
+
+.col-dt {
+    width: 12%;
+}
+
+/* Одинаковая ширина для всех 5 колонок простоев */
+.col-total {
+    width: 100px;
+}
+
+.time-cell {
+    font-weight: 800;
+    color: var(--accent);
+    background: rgba(241, 245, 249, 0.6) !important;
+    font-size: 16px;
+    border-right: 1px solid var(--accent-light);
+}
+
+.saw-cell {
+    font-weight: 800;
+    background: white;
+}
+
+.split-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.val-row {
+    padding: 10px 4px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.val-row.day {
+    background: #fff2d0;
+    color: var(--day-color);
+}
+
+.val-row.night {
+    background: #c8dffb;
+    color: var(--night-color);
+}
+
+.dt-val {
+    opacity: 0.3;
+}
+
+.dt-val:not(:empty):not(.zero) {
+    opacity: 1;
+}
+
+.total-bold {
+    font-weight: 900;
+    font-size: 1.1rem;
+    background: white !important;
+}
+
+.hour-divider td {
+    border-bottom: 3px solid var(--accent-light);
+}
+
+tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.9);
+}

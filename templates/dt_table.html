@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Простои</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=JetBrains+Mono:wght@600;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="../static/css/dt_table.css">
+</head>
+
+<body>
+    <header class="page-header">
+        <div class="logo-text">Таблица<br>простоев</div>
+        <div class="date-picker-container">
+            <label>Выбрать дату</label>
+            <input type="date" class="date-input" id="datePicker">
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="glass-card">
+            <div class="table-wrapper">
+                <table>
+                    <colgroup>
+                        <col class="col-time">
+                        <col class="col-saw">
+                        <col class="col-prod">
+                        <col class="col-dt">
+                        <col class="col-dt">
+                        <col class="col-dt">
+                        <col class="col-dt">
+                        <col class="col-dt">
+                        <col class="col-total">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th rowspan="2">Время</th>
+                            <th rowspan="2">№ пилы</th>
+                            <th rowspan="2">Продукция</th>
+                            <th colspan="5" class="group-header">Продолжительность простоя (мин)</th>
+                            <th rowspan="2">Итого</th>
+                        </tr>
+                        <tr>
+                            <th>Технология</th>
+                            <th>АСУП КП</th>
+                            <th>УРОП</th>
+                            <th>УРГО</th>
+                            <th>Прочее</th>
+                        </tr>
+                    </thead>
+                    <tbody id="main-table">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('datePicker').valueAsDate = new Date();
+
+        const times = [
+            ["8:00-9:00", "20:00-21:00"], ["9:00-10:00", "21:00-22:00"], ["10:00-11:00", "22:00-23:00"],
+            ["11:00-12:00", "23:00-24:00"], ["12:00-13:00", "00:00-01:00"], ["13:00-14:00", "01:00-02:00"],
+            ["14:00-15:00", "02:00-03:00"], ["15:00-16:00", "03:00-04:00"], ["16:00-17:00", "04:00-05:00"],
+            ["17:00-18:00", "05:00-06:00"], ["18:00-19:00", "06:00-07:00"], ["19:00-20:00", "07:00-08:00"]
+        ];
+
+        const tbody = document.getElementById('main-table');
+        const rnd = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        times.forEach((time) => {
+            for (let i = 1; i <= 3; i++) {
+                const tr = document.createElement('tr');
+                if (i === 3) tr.className = 'hour-divider';
+
+                const dProd = rnd(15, 30); const nProd = rnd(10, 25);
+                const dValues = Array.from({ length: 5 }, () => rnd(0, 15));
+                const nValues = Array.from({ length: 5 }, () => rnd(0, 10));
+
+                const totalSum = [...dValues, ...nValues].reduce((a, b) => a + b, 0);
+
+                let rowHtml = i === 1 ? `<td rowspan="3" class="time-cell">${time[0]}<br>${time[1]}</td>` : "";
+
+                rowHtml += `
+                    <td class="saw-cell">№${i}</td>
+                    <td>
+                        <div class="split-box">
+                            <div class="val-row day">${dProd}</div>
+                            <div class="val-row night">${nProd}</div>
+                        </div>
+                    </td>`;
+
+                // Создаем 5 одинаковых колонок простоев
+                for (let j = 0; j < 5; j++) {
+                    const dv = dValues[j] === 0 ? "" : dValues[j];
+                    const nv = nValues[j] === 0 ? "" : nValues[j];
+                    rowHtml += `
+                    <td>
+                        <div class="split-box">
+                            <div class="val-row day dt-val">${dv}</div>
+                            <div class="val-row night dt-val">${nv}</div>
+                        </div>
+                    </td>`;
+                }
+
+                rowHtml += `<td class="total-bold">${totalSum}</td>`;
+                tr.innerHTML = rowHtml;
+                tbody.appendChild(tr);
+            }
+        });
+    </script>
+</body>
+
+</html>

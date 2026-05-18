@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проммашкомплект // Простои</title>
+    <link rel="stylesheet" href="/css/dtpanel.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="container">
+        <div class="top-nav">
+            <div class="logo">Редактирование // Downtimes</div>
+        </div>
+
+        <div class="glass-card">
+            <div class="glass-header">
+                <div class="toggle-container" style="max-width: 600px;">
+                    <input type="radio" name="view-type" id="tab-equip" checked>
+                    <label for="tab-equip">Оборудование</label>
+
+                    <input type="radio" name="view-type" id="tab-depts">
+                    <label for="tab-depts">Отделы</label>
+
+                    <input type="radio" name="view-type" id="tab-types">
+                    <label for="tab-types">Типы простоев</label>
+
+                    <div class="toggle-slider" id="main-slider"></div>
+                </div>
+
+                <button class="btn-neo btn-add" id="addNewBtn">
+                    <i class="fas fa-plus"></i> Добавить запись
+                </button>
+            </div>
+
+            <div class="table-section" id="section-equip">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">ID</th>
+                            <th>Код</th>
+                            <th>Наименование</th>
+                            <th>Отдел</th>
+                            <th>Статус</th>
+                            <th style="text-align: right;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <tr>
+                            <td>1</td>
+                            <td><span class="duration-badge">CNC-01</span></td>
+                            <td>Станок фрезерный DMG</td>
+                            <td>Механический цех</td>
+                            <td><span class="status-pill active">Активен</span></td>
+                            <td style="text-align: right;">
+                                <button class="action-btn btn-edit"><i class="fas fa-pen"></i></button>
+                                <button class="action-btn btn-warning"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalSettings">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h2>Редактирование записи</h2>
+                    <span class="modal-badge">Оборудование</span>
+                </div>
+                <button class="close-modal">&times;</button>
+            </div>
+
+            <form class="modal-grid">
+                <div class="input-group">
+                    <label>Код оборудования</label>
+                    <input type="text" placeholder="Напр: CNC-001">
+                </div>
+                <div class="input-group">
+                    <label>Наименование</label>
+                    <input type="text" placeholder="Введите название">
+                </div>
+                <div class="input-group">
+                    <label>Отдел</label>
+                    <select class="service-select">
+                        <option>Выберите отдел...</option>
+                        <option>Механический цех</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Статус (Active)</label>
+                    <div class="toggle-container" style="max-width: 200px;">
+                        <input type="radio" name="m-active" id="act-yes" checked>
+                        <label for="act-yes">Да</label>
+                        <input type="radio" name="m-active" id="act-no">
+                        <label for="act-no">Нет</label>
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit full-width">Сохранить изменения</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalAdd">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h2>Добавить новую запись</h2>
+                    <span class="modal-badge" style="background: var(--accent); color: white;">Создание</span>
+                </div>
+                <button class="close-modal" id="closeAdd">&times;</button>
+            </div>
+
+            <form class="modal-grid" id="addForm">
+                <div class="input-group full-width">
+                    <label>Куда хотите записать данные?</label>
+                    <select class="service-select" id="select-add-type" required>
+                        <option value="equip">Оборудование</option>
+                        <option value="dept">Отделы</option>
+                        <option value="type">Типы простоев</option>
+                    </select>
+                </div>
+
+                <div class="input-group" id="add-group-code">
+                    <label id="label-add-code">Код</label> <input type="text" id="add-input-code"
+                        placeholder="Напр: CNC-001">
+                </div>
+
+                <div class="input-group" id="add-group-name">
+                    <label id="label-add-name">Наименование</label> <input type="text" id="add-input-name"
+                        placeholder="Введите название" required>
+                </div>
+
+                <div class="input-group" id="add-group-dept">
+                    <label>Отдел</label>
+                    <select class="service-select" id="add-select-dept">
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-submit full-width">Создать запись</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/dtpanel.js"></script>
+</body>
+
+</html>

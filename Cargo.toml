@@ -1,0 +1,27 @@
+[package]
+name = "prostoi_wheeltrack"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4.9.0"
+actix-files = "0.6.6"
+actix-session = { version = "0.10.0", features = ["cookie-session"] }
+askama = "0.12"
+serde = { version = "1.0.209", features = ["derive"] }
+serde_json = "1.0.128"
+dotenv = "0.15.0"
+chrono ={version = "0.4.38", features = ["serde"]}
+tiberius = {version = "0.12.3", features = ["chrono"]}
+tokio ={ version = "1.40.0", features = ["full"]}
+tokio-util ={ version = "0.7.12", features = ["compat"]}
+anyhow = "1.0"
+futures-util = "0.3.30"
+s7 = "0.1.1"
+reqwest = { version = "0.13.3", features = ["json"] }
+uuid = { version = "1.7", features = ["v4", "fast-rng"] }
+hex = "0.4.3"
+bb8 = "=0.9.1"
+bb8-tiberius = "=0.16.0"
+[build-dependencies]
+chrono = "0.4"
