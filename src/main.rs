@@ -21,7 +21,7 @@ async fn create_pool(env_var_name: &str) -> std::io::Result<DbPool> {
     let manager = ConnectionManager::new(config);
 
     let pool = Pool::builder()
-        .max_size(5)
+        .max_size(15)
         .build(manager)
         .await
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::ConnectionRefused, e))?;
