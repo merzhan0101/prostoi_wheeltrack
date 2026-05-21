@@ -100,7 +100,7 @@ async fn update_downtime(
     pool: web::Data<AppState>,
     body: web::Json<serde_json::Value>,
 ) -> impl Responder {
-    println!("Полученный JSON: {:#?}", body);
+    // println!("Полученный JSON: {:#?}", body);
 
     let client_http = Client::builder()
         .danger_accept_invalid_certs(true)

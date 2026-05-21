@@ -14,7 +14,101 @@
     font-family: 'Montserrat', sans-serif;
 }
 
-body {
+/* html,
+body, */
+/* div, */
+/* span, */
+applet,
+object,
+iframe,
+/* h1, */
+/* h2, */
+h3,
+/* h4, */
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+b,
+u,
+i,
+center,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+/* form, */
+/* label, */
+legend,
+/* table, */
+caption,
+/* tbody, */
+tfoot,
+thead,
+/* tr, */
+/* th,
+td, */
+article,
+aside,
+canvas,
+details,
+embed,
+figure,
+figcaption,
+/* footer, */
+/* header, */
+hgroup,
+menu,
+nav,
+output,
+ruby,
+section,
+summary,
+time,
+mark,
+audio,
+video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+}
+
+html, body {
+    background-color: #f4f4f4;
+    /* background-color: white; */
+}
+
+/* body {
     margin: 0;
     min-height: 100vh;
     background: #f1f5f9;
@@ -24,13 +118,63 @@ body {
     color: var(--text-main);
     display: flex;
     justify-content: center;
-    padding: 30px 20px;
+    /* padding: 30px 20px; *\/
+} */
+
+/* HEADER */
+/* Общие стили */
+.header__Container {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    /* background: rgb(225, 239, 255); */
+    background: #fff;
+    width: 100%;
 }
+
+.header__user {
+    margin-left: 50px;
+}
+
+.header__info {
+    padding: 20px;
+    display: flex;
+    border-radius: 25px;
+    align-items: center;
+}
+
+.header__user {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: white;
+    padding: 3px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    border-radius: 12px;
+}
+
+.header__text h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+}
+
+#user_name {
+    font-size: 20px;
+}
+
+.header__logo img {
+    width: 45%;
+    margin-left: 28%;
+}
+
 
 /* Контейнер на 1800px */
 .container.downtime-view {
     width: 100%;
     max-width: 2000px;
+    padding: 20px;
 }
 
 /* Навигация */
@@ -838,4 +982,32 @@ input[readonly] {
 /* Показываем крестик, когда в поле что-то есть */
 .input-with-clear input:not(:placeholder-shown) + .clear-btn {
     display: block;
+}
+
+/* FOOTER */
+footer p {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 500;
+    font-size: 18px;
+}
+
+/* Footer Styles */
+footer {
+    /* background-color: rgb(225, 239, 255); */
+    background: #333;
+    /* border-top: 10px solid #515151; */
+    color: #fff;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    padding: 15px 0;
+    /* padding: 20px 0; */
+}
+
+.footer-container {
+    max-width: 1200px;
+    margin: 0 auto; 
+    font-family: 'Montserrat', sans-serif;
 }

@@ -163,7 +163,7 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
         .and_then(|v| v.as_str())
         .map_or(true, |s| s.is_empty());
 
-    println!("BIN ID IS: {:#?}", bin_id);
+    // println!("BIN ID IS: {:#?}", bin_id);
 
     if is_empty {
         let insert = "insert into Downtimes (Id, EquipmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion) VALUES(@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9)";

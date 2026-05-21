@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             try {
-                console.log(payload);
+                // console.log(payload);
                 const response = await fetch('/api/update_downtime', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -385,7 +385,7 @@ window.openEditModal = async function (id) {
         const data = await response.json();
 
         if (response.ok) {
-            console.log(data)
+            // console.log(data)
             document.getElementById('edit-equipment-id').value = data.EquipmentID;
             document.getElementById('edit-equipment-search').value = data.EquipmentName;
             document.getElementById('edit-start').value = formatToDateTimeLocal(data.StartDateTime);
@@ -445,7 +445,7 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch(`${apiPath}?q=${encodeURIComponent(query)}`);
                 let data = await response.json(); // Используем let, чтобы можно было перезаписать отсортированный массив
-                console.log(data);
+                // console.log(data);
                 // --- СОРТИРОВКА ПО АЛФАВИТУ ---
                 data.sort((a, b) => a[fieldName].localeCompare(b[fieldName]));
 
@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         try {
-            console.log(payload);
+            // console.log(payload);
             const response = await fetch('/api/update_downtime', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -560,7 +560,7 @@ async function loadMainTableData() {
         if (!response.ok) throw new Error('Ошибка сервера');
 
         const data = await response.json();
-        console.log(data);
+        // console.log(data);
         let items = Array.isArray(data) ? data : Object.values(data);
         const count = items.length;
 
