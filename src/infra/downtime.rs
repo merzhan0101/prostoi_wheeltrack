@@ -29,6 +29,14 @@ async fn render_page_downtimes() -> impl Responder {
 //_____________________________
 #[get("/api/workpiece/downtime/data")]
 async fn get_last_50row(pool: web::Data<AppState>) -> impl Responder {
+    // let state = pool.pool_raport.state();
+    // println!(
+    //     "СТАТУС ПУЛА: Всего соединений: {}, Открыто прямо сейчас: {}, {:?}",
+    //     state.connections,      // сколько физически открыто в БД
+    //     state.idle_connections, // сколько из них СВОБОДНО прямо сейчас   // сколько потоков СЕЙЧАС ждут в очереди (если > 0, мы в дедлоке)
+    //     state.statistics.get_wait_time
+    // );
+
     let client_http = Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
@@ -52,6 +60,7 @@ async fn get_last_50row(pool: web::Data<AppState>) -> impl Responder {
             match res.json::<Value>().await {
                 Ok(json) => {
                     let data = db::get_downtimes_vec_jsonn(&pool, json).await.unwrap();
+
                     HttpResponse::Ok().json(data)
                 }
                 Err(e) => {
@@ -75,6 +84,7 @@ async fn get_name_depart(
     search: web::Query<wsr::SearchName>,
 ) -> impl Responder {
     let data = db::get_name_depart(&pool, search.q.clone()).await.unwrap();
+
     HttpResponse::Ok().json(data)
 }
 
@@ -85,12 +95,14 @@ async fn get_name_worker(
     search: web::Query<wsr::SearchName>,
 ) -> impl Responder {
     let data = db::get_name_worker(&pool, search.q.clone()).await.unwrap();
+
     HttpResponse::Ok().json(data)
 }
 
 #[get("/api/downtime-types")]
 async fn get_downtime_types(pool: web::Data<AppState>) -> impl Responder {
     let data = db::get_types(&pool).await.unwrap();
+
     HttpResponse::Ok().json(data)
 }
 
@@ -111,7 +123,6 @@ async fn update_downtime(
     let eamid = payload.get("EAMID").and_then(|v| v.as_str()).unwrap_or("");
     if eamid != "" {
         let data_toir_update = db::data_update(&pool, payload.clone()).await.unwrap();
-
         let post_res = client_http
             .post(
                 "https://pbd02.railsystems.kz/toir_pmk_test_a_maslo/hs/downtime/v1/update_downtime",
@@ -171,6 +182,7 @@ async fn update_downtime(
                         .map(|v| v as i32);
 
                     let _ = db::update_insert(&pool, payload.into_inner(), json.clone()).await;
+
                     HttpResponse::Ok().json(data)
                 }
                 Err(e) => {
@@ -270,6 +282,7 @@ async fn get_filter_downtime(
                 Ok(json) => {
                     // println!("{:#?}", json);
                     let data = db::get_downtimes_vec_jsonn(&pool, json).await.unwrap();
+
                     HttpResponse::Ok().json(data)
                 }
                 Err(e) => {

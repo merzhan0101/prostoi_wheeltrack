@@ -1,6 +1,6 @@
 use askama::Template;
 
-static BUILD_VERSION: &str = env!("BUILD_VERSION");
+static BUILD_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Template)]
 #[template(path = "downtimes.html")]

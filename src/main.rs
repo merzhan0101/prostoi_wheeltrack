@@ -21,11 +21,13 @@ async fn create_pool(env_var_name: &str) -> std::io::Result<DbPool> {
     let manager = ConnectionManager::new(config);
 
     let pool = Pool::builder()
-        .max_size(15)
+        .max_size(5) // Увеличиваем лимит соединений
+        .connection_timeout(std::time::Duration::from_secs(45)) // Даем больше времени на ожидание
         .build(manager)
         .await
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::ConnectionRefused, e))?;
 
+    // println!("pool=> {:#?}", pool);
     Ok(pool)
 }
 

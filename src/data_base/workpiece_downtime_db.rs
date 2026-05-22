@@ -1,6 +1,5 @@
 use crate::data_base::id_search as sh;
 use crate::structures::workpiece_struct as wsr;
-// use actix_web::error::ErrorInternalServerError;
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use futures_util::TryStreamExt;
@@ -105,7 +104,7 @@ pub async fn get_types(pool: &AppState) -> Result<Vec<wsr::DataTypes>> {
 pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> Result<()> {
     let mut client = pool.pool_raport.get().await?;
 
-    println!("result_http: {:#?}", result_http);
+    // println!("result_http: {:#?}", result_http);
 
     let eam_version = result_http
         .get("EAMVersion")
@@ -228,6 +227,13 @@ pub async fn get_downtimes_vec_jsonn(
     pool: &AppState,
     json: Value,
 ) -> Result<Vec<wsr::DowntimesRefactor>> {
+    let mut client = pool.pool_raport.get().await?;
+    // let state = pool.pool_raport.state();
+    // println!(
+    //     "СТАТУС ПУЛА в функции: Всего соединений: {}, Открыто прямо сейчас: {}",
+    //     state.connections,      // сколько физически открыто в БД
+    //     state.idle_connections, // сколько из них СВОБОДНО прямо сейчас   // сколько потоков СЕЙЧАС ждут в очереди (если > 0, мы в дедлоке)
+    // );
     let data_array = json
         .get("Data")
         .and_then(|v| v.as_array())
@@ -252,7 +258,7 @@ pub async fn get_downtimes_vec_jsonn(
             .map(|v| v as i32);
 
         data.EquipmentName = sh::equip(
-            &pool,
+            &mut client,
             item.get("EquipmentID")
                 .and_then(|v| v.as_str())
                 .map(String::from)
@@ -261,7 +267,7 @@ pub async fn get_downtimes_vec_jsonn(
         .await
         .unwrap();
         data.DepartmentName = sh::depart(
-            &pool,
+            &mut client,
             item.get("DepartmentID")
                 .and_then(|v| v.as_str())
                 // .map(String::from)
@@ -286,7 +292,7 @@ pub async fn get_downtimes_vec_jsonn(
             .map(String::from);
 
         data.DowntimeTypeName = sh::dtypes(
-            pool,
+            &mut client,
             item.get("DowntimeTypeID").and_then(|v| v.as_str()).unwrap(),
         )
         .await
@@ -313,6 +319,8 @@ pub async fn get_data_downtime(
     json: Value,
     eamid: &str,
 ) -> Result<wsr::GetDowntime> {
+    let mut client = pool.pool_raport.get().await?;
+
     let data = json.get("Data").unwrap();
     let mut data_toir = wsr::GetDowntime::default();
 
@@ -329,7 +337,7 @@ pub async fn get_data_downtime(
         .map(String::from);
 
     data_toir.EquipmentName = sh::equip(
-        &pool,
+        &mut client,
         data.get("EquipmentID")
             .and_then(|v| v.as_str())
             .map(String::from)
