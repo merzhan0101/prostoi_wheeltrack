@@ -190,11 +190,23 @@ document.addEventListener('DOMContentLoaded', function () {
             // Берем ID оборудования именно из скрытого поля!
             const eqId = document.getElementById('modal-equipment-id').value;
             const typeId = document.getElementById('modal-type').value;
+            const comment = document.getElementById('modal-comment').value.trim();
 
             if (!eqId) {
                 alert("Ошибка: Выберите оборудование из выпадающего списка!");
                 return;
             }
+
+            if (!comment) {
+                alert("Ошибка: Поле 'Комментарий' обязательно для заполнения!");
+                document.getElementById('modal-comment').style.borderColor = 'red';
+                document.getElementById('modal-comment').focus();
+                return;
+            }
+
+            document.getElementById('modal-comment').addEventListener('input', function() {
+                this.style.borderColor = '';
+            });
 
             const payload = {
                 EAMID: "",

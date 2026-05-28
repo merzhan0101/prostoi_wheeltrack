@@ -855,6 +855,19 @@ tbody tr:hover td {
     box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
 }
 
+.form-group.full-width textarea:required {
+    border-left: 3px solid #ff4444;
+}
+
+.form-group.full-width textarea:required:valid {
+    border-left-color: #4CAF50;
+}
+
+.form-group.full-width label span.required-star {
+    color: red;
+    margin-left: 4px;
+}
+
 /* Длительность (ReadOnly) */
 input[readonly] {
     background: #f1f5f9;
