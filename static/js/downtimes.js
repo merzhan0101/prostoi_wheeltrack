@@ -247,10 +247,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const dateVal = filterDateInput.value;
             if (dateVal) {
                 // Перенаправляем на главную с параметром даты
-                window.location.href = `/?date=${dateVal}`;
+                window.location.href = `/workpiece/downtimes?date=${dateVal}`;
             } else {
                 // Если дата очищена, сбрасываем фильтр
-                window.location.href = '/';
+                window.location.href = '/workpiece/downtimes';
             }
         };
 
@@ -598,6 +598,7 @@ async function loadMainTableData() {
         items.forEach((item, i) => {
             const id = item.EAMID || '-';
             const eqName = item.EquipmentName || '-';
+            const EAMDocName = item.EAMDocName || '-';
 
             const rawStart = item.StartDateTime || '';
             const rawEnd = item.EndDateTime || '';
@@ -611,6 +612,7 @@ async function loadMainTableData() {
             html += `
                 <tr>
                     <td>${i + 1}</td>
+                    <td>${EAMDocName}</td>
                     <td><span class="duration-badge">${eqName}</span></td>
                     <td>
                         <div style="font-size: 0.9em; display: flex; flex-direction: column; gap: 4px;">
