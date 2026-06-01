@@ -46,11 +46,13 @@ async fn get_last_50row(pool: web::Data<AppState>) -> impl Responder {
     data_toir.MaxRows = Some(50);
 
     let post_res = client_http
-        .post("https://pbd02.railsystems.kz/TOIR_PMK/hs/downtime/v1/get_downtime_list")
-        .basic_auth("Admin", Some("qwe12345qwe"))
+        .post(format!("{}/get_downtime_list", pool.toir_url))
+        .basic_auth(&pool.toir_login, Some(&pool.toir_password))
         .json(&data_toir)
         .send()
         .await;
+
+    // println!("Отправляем запрос на {} с данными: {:#?}", format!("{}/get_downtime_list", pool.toir_url), data_toir);
 
     match post_res {
         Ok(res) => {
@@ -124,10 +126,8 @@ async fn update_downtime(
     if eamid != "" {
         let data_toir_update = db::data_update(&pool, payload.clone()).await.unwrap();
         let post_res = client_http
-            .post(
-                "https://pbd02.railsystems.kz/TOIR_PMK/hs/downtime/v1/update_downtime",
-            )
-            .basic_auth("Admin", Some("qwe12345qwe"))
+            .post(format!("{}/update_downtime", pool.toir_url))
+            .basic_auth(&pool.toir_login, Some(&pool.toir_password))
             .json(&data_toir_update)
             .send()
             .await;
@@ -163,10 +163,8 @@ async fn update_downtime(
         }
     } else {
         let post_res = client_http
-            .post(
-                "https://pbd02.railsystems.kz/TOIR_PMK/hs/downtime/v1/update_downtime",
-            )
-            .basic_auth("Admin", Some("qwe12345qwe"))
+            .post(format!("{}/update_downtime", pool.toir_url))
+            .basic_auth(&pool.toir_login, Some(&pool.toir_password))
             .json(&payload)
             .send()
             .await;
@@ -219,8 +217,8 @@ async fn get_downtime(
     // println!("payload: {:#?}", payload);
 
     let post_res = client_http
-        .post("https://pbd02.railsystems.kz/TOIR_PMK/hs/downtime/v1/get_downtime")
-        .basic_auth("Admin", Some("qwe12345qwe"))
+        .post(format!("{}/get_downtime", pool.toir_url))
+        .basic_auth(&pool.toir_login, Some(&pool.toir_password))
         .json(&payload)
         .send()
         .await;
@@ -234,12 +232,14 @@ async fn get_downtime(
             // 2. Пытаемся распарсить JSON
             match res.json::<Value>().await {
                 Ok(json) => {
-                    // println!("{:#?}", json);
+                    // println!("GET_DOWNTIME JSON: {:#?}", json);
 
                     let data =
                         db::get_data_downtime(&pool, json, &payload["EAMID"].as_str().unwrap())
                             .await
                             .unwrap();
+
+                    // println!("DATA TO FRONT: {:#?}", data);
 
                     HttpResponse::Ok().json(data)
                 }
@@ -267,8 +267,8 @@ async fn get_filter_downtime(
         .unwrap();
 
     let post_res = client_http
-        .post("https://pbd02.railsystems.kz/TOIR_PMK/hs/downtime/v1/get_downtime_list")
-        .basic_auth("Admin", Some("qwe12345qwe"))
+        .post(format!("{}/get_downtime_list", pool.toir_url))
+        .basic_auth(&pool.toir_login, Some(&pool.toir_password))
         .json(&data_toir)
         .send()
         .await;

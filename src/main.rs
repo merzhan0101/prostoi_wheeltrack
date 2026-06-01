@@ -21,7 +21,7 @@ async fn create_pool(env_var_name: &str) -> std::io::Result<DbPool> {
     let manager = ConnectionManager::new(config);
 
     let pool = Pool::builder()
-        .max_size(5) // Увеличиваем лимит соединений
+        .max_size(15) // Увеличиваем лимит соединений
         .connection_timeout(std::time::Duration::from_secs(45)) // Даем больше времени на ожидание
         .build(manager)
         .await
@@ -35,12 +35,20 @@ async fn create_pool(env_var_name: &str) -> std::io::Result<DbPool> {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
+    let toir_url = env::var("TOIR_URL").expect("TOIR_URL not found");
+    let toir_login = env::var("TOIR_LOGIN").expect("TOIR_LOGIN not found");
+    let toir_password = env::var("TOIR_PASSWORD").expect("TOIR_PASSWORD not found");
+
     let pool_wt = create_pool("CONNECTION_STRING").await?;
     let pool_raport = create_pool("CONNECTION_RAPORT").await?;
 
     let app_state = AppState {
         pool_wt,
         pool_raport,
+
+        toir_url,
+        toir_login,
+        toir_password,
     };
 
     let data_state = web::Data::new(app_state);

@@ -7,4 +7,8 @@ pub type DbPool = Pool<ConnectionManager>;
 pub struct AppState {
     pub pool_wt: DbPool,
     pub pool_raport: DbPool,
+
+    pub toir_url: String,
+    pub toir_login: String,
+    pub toir_password: String,
 }

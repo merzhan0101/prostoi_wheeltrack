@@ -244,7 +244,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (filterBtn && filterDateInput) {
         filterBtn.onclick = () => {
+            loadMainTableData(filterDateInput.value);
+        };
+    }
+
+    /*if (filterBtn && filterDateInput) {
+        filterBtn.onclick = () => {
             const dateVal = filterDateInput.value;
+            console.log("Выбранная дата для фильтрации:", dateVal);
             if (dateVal) {
                 // Перенаправляем на главную с параметром даты
                 window.location.href = `/workpiece/downtimes?date=${dateVal}`;
@@ -259,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (params.has('date')) {
             filterDateInput.value = params.get('date');
         }
-    }
+    }*/
 });
 // Находим элементы для редактирования
 const editSearchInput = document.getElementById('edit-equipment-search');
@@ -379,7 +386,8 @@ setupEquipmentSearch('edit-equipment-search', 'edit-eq-dropdown', 'edit-equipmen
 setupWorkerSearch('edit-worker-search', 'edit-worker-dropdown', 'edit-worker-id', 'edit-worker-container');
 
 // Перемещаем функции, которые вызываются из HTML (onclick), в глобальную видимость
-window.openEditModal = async function (id) {
+// window.openEditModal = async function (id) {
+window.openEditModal = async function (id, tableComment = "") {
     const modal = document.getElementById('editModal');
     const displayId = document.getElementById('edit-id-display');
     const entryIdInput = document.getElementById('edit-entry-id');
@@ -395,6 +403,7 @@ window.openEditModal = async function (id) {
         });
 
         const data = await response.json();
+        // console.log("EDIT DATA:", data);
 
         if (response.ok) {
             // console.log(data)
@@ -403,14 +412,20 @@ window.openEditModal = async function (id) {
             document.getElementById('edit-start').value = formatToDateTimeLocal(data.StartDateTime);
             document.getElementById('edit-end').value = formatToDateTimeLocal(data.EndDateTime);
             document.getElementById('edit-worker-search').value = data.Author;
-            const commentArea = document.getElementById('edit-comment');
+
+            /*const commentArea = document.getElementById('edit-comment');
             if (commentArea) {
                 commentArea.value = data.Comment || "";
             }
 
             // Если есть поле комментария в данных
             const commField = document.getElementById('edit-comment');
-            if (commField) commField.value = data.Comment || "";
+            if (commField) commField.value = data.Comment || "";*/
+
+            const commField = document.getElementById('edit-comment');
+            if (commField) {
+                commField.value = data.Comment || tableComment || "";
+            }
 
             await window.loadDowntimeTypes('edit-type', data.DowntimeTypeID);
 
@@ -561,19 +576,51 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // --- ЗАГРУЗКА ДАННЫХ В ТАБЛИЦУ ---
-async function loadMainTableData() {
+// async function loadMainTableData() {
+async function loadMainTableData(dateVal = null) {
     const tableBody = document.getElementById('table-body');
     if (!tableBody) return;
 
     tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Загрузка данных...</td></tr>';
 
     try {
-        const response = await fetch('/api/workpiece/downtime/data');
+        // const response = await fetch('/api/workpiece/downtime/data');
+
+        // ===============================================================================
+
+        let response;
+
+        if (dateVal) {
+            const dateForToir = dateVal.replaceAll('-', '');
+
+            const payload = {
+                Filter_StartDate: dateForToir + "000000",
+                Filter_EndDate: dateForToir + "235959",
+                WithEAMDowntimes: 1,
+                ShowDeleted: 0,
+                MaxRows: 50,
+                Offset: 0
+            };
+
+            response = await fetch('/api/get_downtime_list/filter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            response = await fetch('/api/workpiece/downtime/data');
+        }
+
+        // ===============================================================================
+
         if (!response.ok) throw new Error('Ошибка сервера');
 
         const data = await response.json();
-        // console.log(data);
+        // console.log(data); //все данные по простоям
         let items = Array.isArray(data) ? data : Object.values(data);
+        // console.log(items); //массив простоев
         const count = items.length;
 
         if (count === 0) {
@@ -608,6 +655,7 @@ async function loadMainTableData() {
             const typeName = item.DowntimeTypeName || '-';
             const author = item.Author || '-';
             const comment = item.Comment || '-';
+            // console.log(`Простой #${i + 1}:`, { id, eqName, EAMDocName, startFormatted, endFormatted, typeName, author, comment });
 
             html += `
                 <tr>
@@ -625,7 +673,7 @@ async function loadMainTableData() {
                     <td>-</td>
                     <td><div class="comment-cell" title="${comment}">${comment}</div></td>
                     <td style="text-align:right">
-                        <button class="action-btn btn-edit" onclick="openEditModal('${id}')">
+                        <button class="action-btn btn-edit" data-id="${id}" data-comment="${comment.replace(/"/g, '&quot;')}">
                             <i class="fas fa-pen"></i>
                         </button>
                     </td>
@@ -633,6 +681,12 @@ async function loadMainTableData() {
             `;
         });
         tableBody.innerHTML = html;
+
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.onclick = () => {
+                openEditModal(btn.dataset.id, btn.dataset.comment || "");
+            };
+        });
     } catch (e) {
         console.error("Ошибка загрузки данных таблицы:", e);
         tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Ошибка загрузки данных</td></tr>';
@@ -655,7 +709,18 @@ function formatSqlDate(sqlDate) {
 }
 
 // Запуск при загрузке
-document.addEventListener('DOMContentLoaded', loadMainTableData);
+// document.addEventListener('DOMContentLoaded', loadMainTableData);
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const dateVal = params.get('date');
+
+    if (dateVal) {
+        document.getElementById('filter-date-start').value = dateVal;
+        loadMainTableData(dateVal);
+    } else {
+        loadMainTableData();
+    }
+});
 
 // Логика кнопок быстрой очистки полей
 document.querySelectorAll('.clear-btn').forEach(btn => {

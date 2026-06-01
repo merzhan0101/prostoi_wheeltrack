@@ -55,7 +55,7 @@ pub async fn get_name_worker(
     let mut select = Query::new(
         "SELECT Id, FIO 
             FROM Worker 
-            WHERE FIO LIKE @P1 and Place_id = 1",
+            WHERE FIO LIKE @P1 and Place_id = 1 and Post_id = 1",
     );
     select.bind(like_query);
 
@@ -303,6 +303,11 @@ pub async fn get_downtimes_vec_jsonn(
             .and_then(|v| v.as_str())
             .map(String::from);
 
+        data.Comment = item
+            .get("Comment")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
         data.Deleted = item
             .get("Deleted")
             .and_then(|v| v.as_i64())
@@ -373,6 +378,11 @@ pub async fn get_data_downtime(
 
     data_toir.Author = data
         .get("Author")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+
+    data_toir.Comment = data
+        .get("Comment")
         .and_then(|v| v.as_str())
         .map(String::from);
 

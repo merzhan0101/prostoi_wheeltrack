@@ -37,6 +37,7 @@ pub struct DowntimesRefactor {
     pub DowntimeTypeName: Option<String>,
     pub Author: Option<String>,
     pub Deleted: Option<i32>,
+    pub Comment: Option<String>,    
 }
 
 // __________________________
@@ -53,6 +54,7 @@ pub struct GetDowntimesRequest {
     pub OrderSettings: Option<String>,
     pub MaxRows: Option<i32>,
     pub Offset: Option<i32>,
+    // pub Comment: Option<String>,
 }
 
 // _________________________________
