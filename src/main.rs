@@ -11,7 +11,8 @@ async fn create_pool(env_var_name: &str) -> std::io::Result<DbPool> {
     let conn_str = env::var(env_var_name).map_err(|e| {
         std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("Missing env var: {}", e),
+            format!("Missing env var: {}", env_var_name)
+            // format!("Missing env var: {}", e),
         )
     })?;
 
@@ -34,6 +35,9 @@ async fn create_pool(env_var_name: &str) -> std::io::Result<DbPool> {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
+
+    // println!("dotenv = {:?}", dotenv());
+    // println!("CONNECTION_STRING = {:?}", env::var("CONNECTION_STRING"));
 
     let toir_url = env::var("TOIR_URL").expect("TOIR_URL not found");
     let toir_login = env::var("TOIR_LOGIN").expect("TOIR_LOGIN not found");
@@ -60,9 +64,9 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/static", "./static").show_files_listing())
     })
 
-    // .bind("127.0.0.1:2000")?
-    // .bind("10.110.7.253:8080")?
-    .bind("0.0.0.0:8080")?
+    .bind("127.0.0.1:2000")?
+    // .bind("0.0.0.0:8080")?
+    .bind("10.110.7.253:8080")?
     .run()
     .await
 }

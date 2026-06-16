@@ -1024,3 +1024,73 @@ footer {
     margin: 0 auto; 
     font-family: 'Montserrat', sans-serif;
 }
+
+/* test */
+.selected-equipments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.equipment-chip {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.equipment-chip button {
+    border: none;
+    background: transparent;
+    color: #0369a1;
+    font-weight: 900;
+    margin-left: 8px;
+    cursor: pointer;
+}
+
+/* test */
+.custom-toast {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(15px);
+
+    padding: 16px 22px;
+
+    border-radius: 18px;
+
+    border-left: 5px solid #22c55e;
+
+    box-shadow: 0 20px 40px rgba(0,0,0,.12);
+
+    font-weight: 700;
+    color: #1e293b;
+
+    opacity: 0;
+    transform: translateY(-20px);
+
+    pointer-events: none;
+
+    transition: .3s ease;
+
+    z-index: 99999;
+}
+
+.custom-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.custom-toast i {
+    color: #22c55e;
+    font-size: 20px;
+}

@@ -10,6 +10,41 @@ document.addEventListener('DOMContentLoaded', function () {
     const eqDropdown = document.getElementById('eq-dropdown');
     const eqHiddenId = document.getElementById('modal-equipment-id');
 
+    // for alert
+    function showToast(message) {
+        const toast = document.getElementById('custom-toast');
+        const text = document.getElementById('toast-message');
+
+        text.textContent = message;
+
+        toast.classList.add('show');
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    let selectedEquipments = [];
+
+    function renderSelectedEquipments() {
+        const box = document.getElementById('selected-equipments');
+        if (!box) return;
+
+        box.innerHTML = selectedEquipments.map(eq => `
+            <span class="equipment-chip">
+                ${eq.name}
+                <button type="button" data-id="${eq.id}">×</button>
+            </span>
+        `).join('');
+
+        box.querySelectorAll('button').forEach(btn => {
+            btn.onclick = () => {
+                selectedEquipments = selectedEquipments.filter(x => x.id !== btn.dataset.id);
+                renderSelectedEquipments();
+            };
+        });
+    }
+
     // Элемент выбора типа простоя
     const typeSelect = document.getElementById('modal-type');
 
@@ -67,6 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addNewBtn.onclick = () => {
             entryModal.style.display = 'flex';
             loadDowntimeTypes();
+            loadDepartments();
         };
     }
 
@@ -117,6 +153,37 @@ document.addEventListener('DOMContentLoaded', function () {
     // Чтобы функция была доступна везде
     window.loadDowntimeTypes = loadDowntimeTypes;
 
+    // СЛУЖБЫ
+    async function loadDepartments(selectId = 'modal-department', selectedValue = null) {
+        const typeSelect = document.getElementById(selectId);
+        if (!typeSelect) return;
+
+        // Если в списке уже есть данные (кроме дефолтной фразы), не грузим заново
+        if (typeSelect.options.length > 1 && !selectedValue) return;
+
+        try {
+            const response = await fetch('/api/departments');
+            const data = await response.json();
+            console.log("Загруженные службы:", data);
+
+            // Очищаем текущие опции (кроме первой "Выберите службу...")
+            typeSelect.innerHTML = '<option value="">Выберите службу...</option>';
+
+            data.forEach(t => {
+                let opt = new Option(t.department, t.id);
+                if (selectedValue && t.id === selectedValue) {
+                    opt.selected = true;
+                }
+                typeSelect.add(opt);
+            });
+        } catch (e) {
+            console.error("Ошибка загрузки служб:", e);
+        }
+    }
+
+// Чтобы функция была доступна везде
+window.loadDepartments = loadDepartments;
+
     // --- 3. ОБОРУДОВАНИЕ (ЖИВОЙ ПОИСК) ---
     const fetchEquipment = async (query) => {
         try {
@@ -146,9 +213,40 @@ document.addEventListener('DOMContentLoaded', function () {
     if (eqDropdown) {
         eqDropdown.onclick = (e) => {
             const item = e.target.closest('.dropdown-item');
+
             if (item && item.dataset.id) {
-                eqSearchInput.value = item.textContent.trim();
-                eqHiddenId.value = item.dataset.id;
+                const typeText = document
+                    .getElementById('modal-type')
+                    .selectedOptions[0]
+                    ?.textContent
+                    ?.trim();
+
+                const isCombined = typeText === 'Комбинированный отказ';
+
+                if (isCombined) {
+                    const exists = selectedEquipments.some(x => x.id === item.dataset.id);
+
+                    if (!exists) {
+                        selectedEquipments.push({
+                            id: item.dataset.id,
+                            name: item.textContent.trim()
+                        });
+                    }
+
+                    eqSearchInput.value = '';
+                    eqHiddenId.value = '';
+                    renderSelectedEquipments();
+                } else {
+                    selectedEquipments = [{
+                        id: item.dataset.id,
+                        name: item.textContent.trim()
+                    }];
+
+                    eqSearchInput.value = item.textContent.trim();
+                    eqHiddenId.value = item.dataset.id;
+                    renderSelectedEquipments();
+                }
+
                 eqDropdown.style.display = 'none';
             }
         };
@@ -188,11 +286,22 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
 
             // Берем ID оборудования именно из скрытого поля!
-            const eqId = document.getElementById('modal-equipment-id').value;
+            const typeText = document
+                .getElementById('modal-type')
+                .selectedOptions[0]
+                ?.textContent
+                ?.trim();
+
+            const isCombined = typeText === 'Комбинированный отказ';
+
+            const equipmentIds = isCombined
+                ? selectedEquipments.map(x => x.id)
+                : [document.getElementById('modal-equipment-id').value];
+
             const typeId = document.getElementById('modal-type').value;
             const comment = document.getElementById('modal-comment').value.trim();
 
-            if (!eqId) {
+            if (equipmentIds.length === 0 || equipmentIds.some(x => !x)) {
                 alert("Ошибка: Выберите оборудование из выпадающего списка!");
                 return;
             }
@@ -210,7 +319,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const payload = {
                 EAMID: "",
-                EquipmentID: eqId,
+                EquipmentIDs: equipmentIds,
+                DepartmentID: document.getElementById('modal-department').value,
                 DowntimeTypeID: typeId,
                 StartDateTime: formatToEAMDate(document.getElementById('modal-start').value),
                 EndDateTime: formatToEAMDate(document.getElementById('modal-end').value),
@@ -219,7 +329,6 @@ document.addEventListener('DOMContentLoaded', function () {
             };
 
             try {
-                // console.log(payload);
                 const response = await fetch('/api/update_downtime', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -227,8 +336,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 const result = await response.json();
+
                 if (response.ok && result.Posted === 1) {
-                    location.reload();
+                    showToast("Простой успешно сохранён");
+
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1200);
                 } else {
                     alert("Ошибка сохранения: " + (result.ErrorMessage || "Неизвестная ошибка"));
                 }
@@ -248,25 +362,6 @@ document.addEventListener('DOMContentLoaded', function () {
         };
     }
 
-    /*if (filterBtn && filterDateInput) {
-        filterBtn.onclick = () => {
-            const dateVal = filterDateInput.value;
-            console.log("Выбранная дата для фильтрации:", dateVal);
-            if (dateVal) {
-                // Перенаправляем на главную с параметром даты
-                window.location.href = `/workpiece/downtimes?date=${dateVal}`;
-            } else {
-                // Если дата очищена, сбрасываем фильтр
-                window.location.href = '/workpiece/downtimes';
-            }
-        };
-
-        // Чтобы выбранная дата не исчезала из поля после перезагрузки
-        const params = new URLSearchParams(window.location.search);
-        if (params.has('date')) {
-            filterDateInput.value = params.get('date');
-        }
-    }*/
 });
 // Находим элементы для редактирования
 const editSearchInput = document.getElementById('edit-equipment-search');
@@ -378,7 +473,7 @@ const setupWorkerSearch = (inputId, dropdownId, hiddenId, containerId) => {
 
 // --- ЗАПУСК ДЛЯ ОБЕИХ МОДАЛОК ---
 // Для новой записи
-setupEquipmentSearch('modal-equipment-search', 'eq-dropdown', 'modal-equipment-id', 'eq-container');
+// setupEquipmentSearch('modal-equipment-search', 'eq-dropdown', 'modal-equipment-id', 'eq-container');
 setupWorkerSearch('modal-worker-search', 'worker-dropdown', 'modal-worker-id', 'worker-container');
 
 // Для редактирования (добавьте эти ID в HTML если их нет)
@@ -503,7 +598,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Инициализация всех поисков
-    setupSearch('modal-equipment-search', 'eq-dropdown', 'modal-equipment-id', 'eq-container', '/api/equipment', 'name');
+    // setupSearch('modal-equipment-search', 'eq-dropdown', 'modal-equipment-id', 'eq-container', '/api/equipment', 'name');
     setupSearch('edit-equipment-search', 'edit-eq-dropdown', 'edit-equipment-id', 'edit-eq-container', '/api/equipment', 'name');
     setupSearch('modal-worker-search', 'worker-dropdown', 'modal-worker-id', 'worker-container', '/api/workers', 'fio');
     setupSearch('edit-worker-search', 'edit-worker-dropdown', 'edit-worker-id', 'edit-worker-container', '/api/workers', 'fio');
@@ -515,6 +610,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('addNewBtn').onclick = () => {
         entryModal.style.display = 'flex';
         window.loadDowntimeTypes('modal-type');
+        window.loadDepartments('modal-department');
     };
 
     document.querySelectorAll('.close-modal').forEach(btn => {
@@ -567,7 +663,11 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             const result = await response.json();
             if (result.Posted === 1) {
-                location.reload();
+               showToast("Простой успешно обновлён");
+
+                setTimeout(() => {
+                    location.reload();
+                }, 1200);
             } else {
                 alert('Ошибка: ' + result.ErrorMessage);
             }
@@ -576,7 +676,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // --- ЗАГРУЗКА ДАННЫХ В ТАБЛИЦУ ---
-// async function loadMainTableData() {
 async function loadMainTableData(dateVal = null) {
     const tableBody = document.getElementById('table-body');
     if (!tableBody) return;
@@ -618,7 +717,7 @@ async function loadMainTableData(dateVal = null) {
         if (!response.ok) throw new Error('Ошибка сервера');
 
         const data = await response.json();
-        // console.log(data); //все данные по простоям
+        console.log(data); //все данные по простоям
         let items = Array.isArray(data) ? data : Object.values(data);
         // console.log(items); //массив простоев
         const count = items.length;

@@ -162,16 +162,31 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
         .and_then(|v| v.as_str())
         .map_or(true, |s| s.is_empty());
 
+    let department_id_bin = body
+        .get("DepartmentID")
+        .and_then(|v| v.as_str())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .map(|u| u.into_bytes().to_vec())
+        .unwrap_or_default();
+
     // println!("BIN ID IS: {:#?}", bin_id);
 
     if is_empty {
-        let insert = "insert into Downtimes (Id, EquipmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion) VALUES(@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9)";
+        // let insert = "insert into Downtimes (Id, EquipmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion) VALUES(@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9)";
+        
+        let insert = "
+            INSERT INTO Downtimes 
+            (Id, EquipmentID, DepartmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion)
+            VALUES(@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10)
+        ";
+        
         client
             .execute(
                 insert,
                 &[
                     &bin_id,
                     &equipment_id_bin,
+                    &department_id_bin,
                     &downtime_id_bin,
                     &dt,
                     &dt1,
@@ -192,28 +207,29 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
             .await
             .unwrap();
     } else {
-        let update = "UPDATE Downtimes SET EquipmentID=@P1, DowntimeTypeID=@P2, StartDateTime=@P3, EndDateTime=@P4, Author=@P5, Comment=@P6 WHERE Id=@P7";
+        let update = "UPDATE Downtimes SET EquipmentID=@P1, DepartmentID=@P2, DowntimeTypeID=@P3, StartDateTime=@P4, EndDateTime=@P5, Author=@P6, Comment=@P7 WHERE Id=@P8";
 
         client
             .execute(
                 update,
                 &[
-                    &equipment_id_bin,
-                    &downtime_id_bin,
-                    &dt,
-                    &dt1,
-                    &body
-                        .get("Author")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string(),
-                    &body
-                        .get("Comment")
-                        .and_then(|v| v.as_str())
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.to_string()),
-                    &bin_id,
-                ],
+                            &equipment_id_bin,      // @P1
+                            &department_id_bin,     // @P2
+                            &downtime_id_bin,       // @P3
+                            &dt,                    // @P4
+                            &dt1,                   // @P5
+                            &body
+                                .get("Author")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("")
+                                .to_string(),       // @P6
+                            &body
+                                .get("Comment")
+                                .and_then(|v| v.as_str())
+                                .filter(|s| !s.is_empty())
+                                .map(|s| s.to_string()), // @P7
+                            &bin_id,                // @P8
+                        ]
             )
             .await
             .unwrap();
@@ -449,4 +465,67 @@ pub async fn data_update(pool: &AppState, body: Value) -> Result<wsr::UpdateData
         .map(String::from);
 
     Ok(data)
+}
+
+// test
+// pub async fn get_name_department(
+//     pool: &AppState,
+//     name_depart: Option<String>,
+// ) -> Result<Vec<wsr::DepartmentName>> {
+//     let mut client = pool.pool_wt.get().await?;
+
+//     let mut data = wsr::DepartmentName::default();
+
+//     let like_query = format!("%{}%", name_depart.unwrap_or("".to_string()));
+
+//     let mut data_result: Vec<wsr::DepartmentName> = Vec::new();
+
+//     let mut select = Query::new(
+//         "SELECT Id, Name FROM DTDepartments WHERE Marked = 0 and Code in ('000000196', '000000209', '000000122', '000000030')",
+//     );
+//     select.bind(like_query);
+
+//     {
+//         let mut stream = select.query(&mut client).await?;
+//         while let Some(row) = stream.try_next().await? {
+//             if let QueryItem::Row(r) = row {
+//                 data.id = r.get("Id");
+//                 data.department = r.get("Name").map(|s: &str| s.to_string());
+//                 data_result.push(data.clone());
+//             }
+//         }
+//     }
+
+//     Ok(data_result)
+// }
+
+pub async fn get_name_department(
+    pool: &AppState,
+    name_depart: Option<String>,
+) -> Result<Vec<wsr::DepartmentName>> {
+    let mut client = pool.pool_raport.get().await?;
+
+    let mut data = wsr::DepartmentName::default();
+
+    let like_query = format!("%{}%", name_depart.unwrap_or("".to_string()));
+
+    let mut data_result: Vec<wsr::DepartmentName> = Vec::new();
+
+    let mut select = Query::new("SELECT Id, Name FROM DTDepartments WHERE Marked = 0 and Name in ('Участок по ремонту оборудования проката', 'Участок по ремонту гидравлического оборудования', 'Отдел АСУП колесного производства')");
+    // select.bind(like_query);
+
+    {
+        let mut stream = select.query(&mut client).await?;
+        while let Some(row) = stream.try_next().await? {
+            if let QueryItem::Row(r) = row {
+                data.id = r
+                    .get::<&[u8], _>("Id")
+                    .and_then(|bytes| Uuid::from_slice(bytes).ok().map(|u| u.to_string()));
+                data.department = r.get("Name").map(|s: &str| s.to_string());
+                data_result.push(data.clone());
+            }
+        }
+    }
+
+    Ok(data_result)
 }

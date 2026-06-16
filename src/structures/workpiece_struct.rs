@@ -18,6 +18,12 @@ pub struct SearchNameWorkerResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DepartmentName {
+    pub department: Option<String>,
+    pub id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DataTypes {
     pub id: Option<String>,
     pub name: Option<String>,
