@@ -221,7 +221,13 @@ window.loadDepartments = loadDepartments;
                     ?.textContent
                     ?.trim();
 
-                const isCombined = typeText === 'Комбинированный отказ';
+                const combinedTypes = [
+                    'Комбинированный отказ',
+                    'Ожидание смежного участка',
+                    'Калибровка'
+                ];
+
+                const isCombined = combinedTypes.includes(typeText);
 
                 if (isCombined) {
                     const exists = selectedEquipments.some(x => x.id === item.dataset.id);
@@ -292,7 +298,13 @@ window.loadDepartments = loadDepartments;
                 ?.textContent
                 ?.trim();
 
-            const isCombined = typeText === 'Комбинированный отказ';
+            const combinedTypes = [
+                'Комбинированный отказ',
+                'Ожидание смежного участка',
+                'Калибровка'
+            ];
+
+            const isCombined = combinedTypes.includes(typeText);
 
             const equipmentIds = isCombined
                 ? selectedEquipments.map(x => x.id)
