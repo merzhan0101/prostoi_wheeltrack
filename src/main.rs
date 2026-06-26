@@ -64,9 +64,9 @@ async fn main() -> std::io::Result<()> {
             .service(fs::Files::new("/static", "./static").show_files_listing())
     })
 
-    .bind("127.0.0.1:2000")?
-    // .bind("0.0.0.0:8080")?
-    .bind("10.110.7.253:8080")?
+    // .bind("127.0.0.1:2000")?
+    .bind("0.0.0.0:8080")?
+    // .bind("10.110.7.253:8080")?
     .run()
     .await
 }

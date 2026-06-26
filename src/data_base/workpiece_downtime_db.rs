@@ -162,12 +162,19 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
         .and_then(|v| v.as_str())
         .map_or(true, |s| s.is_empty());
 
-    let department_id_bin = body
+    let department_id_bin: Option<Vec<u8>> = body
         .get("DepartmentID")
         .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
         .and_then(|s| Uuid::parse_str(s).ok())
-        .map(|u| u.into_bytes().to_vec())
-        .unwrap_or_default();
+        .map(|u| u.into_bytes().to_vec());
+
+    // let department_id_bin = body
+    //     .get("DepartmentID")
+    //     .and_then(|v| v.as_str())
+    //     .and_then(|s| Uuid::parse_str(s).ok())
+    //     .map(|u| u.into_bytes().to_vec())
+    //     .unwrap_or_default();
 
     // println!("BIN ID IS: {:#?}", bin_id);
 
