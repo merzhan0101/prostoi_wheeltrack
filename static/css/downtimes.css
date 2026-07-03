@@ -108,19 +108,6 @@ html, body {
     /* background-color: white; */
 }
 
-/* body {
-    margin: 0;
-    min-height: 100vh;
-    background: #f1f5f9;
-    background-image:
-        radial-gradient(circle at 10% 10%, rgba(14, 165, 233, 0.08) 0%, transparent 30%),
-        radial-gradient(circle at 90% 90%, rgba(56, 189, 248, 0.05) 0%, transparent 30%);
-    color: var(--text-main);
-    display: flex;
-    justify-content: center;
-    /* padding: 30px 20px; *\/
-} */
-
 /* HEADER */
 /* Общие стили */
 .header__Container {
@@ -752,7 +739,7 @@ tbody tr:hover td {
     box-shadow: 0 25px 50px -12px rgba(14, 165, 233, 0.2);
     /* Голубоватая тень */
     border: 1px solid rgba(14, 165, 233, 0.3);
-    overflow: hidden;
+    overflow: visible;
     animation: modalSlide 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
 
@@ -1056,32 +1043,21 @@ footer {
     position: fixed;
     top: 30px;
     right: 30px;
-
     display: flex;
     align-items: center;
     gap: 12px;
-
     background: rgba(255,255,255,0.95);
     backdrop-filter: blur(15px);
-
     padding: 16px 22px;
-
     border-radius: 18px;
-
     border-left: 5px solid #22c55e;
-
     box-shadow: 0 20px 40px rgba(0,0,0,.12);
-
     font-weight: 700;
     color: #1e293b;
-
     opacity: 0;
     transform: translateY(-20px);
-
     pointer-events: none;
-
     transition: .3s ease;
-
     z-index: 99999;
 }
 

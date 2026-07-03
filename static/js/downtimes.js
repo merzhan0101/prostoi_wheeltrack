@@ -45,6 +45,86 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    let selectedDepartments = [];
+
+    function renderSelectedDepartments() {
+        const box = document.getElementById('selected-departments');
+        if (!box) return;
+
+        box.innerHTML = selectedDepartments.map(dep => `
+            <span class="equipment-chip">
+                ${dep.name}
+                <button type="button" data-id="${dep.id}">×</button>
+            </span>
+        `).join('');
+
+        box.querySelectorAll('button').forEach(btn => {
+            btn.onclick = () => {
+                selectedDepartments = selectedDepartments.filter(x => x.id !== btn.dataset.id);
+                renderSelectedDepartments();
+            };
+        });
+    }
+
+    // ПОИСК СЛУЖБ
+    const departmentSearchInput = document.getElementById('modal-department-search');
+    const departmentDropdown = document.getElementById('department-dropdown');
+
+    const fetchDepartments = async (query) => {
+        try {
+            const response = await fetch(`/api/departments?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            if (data.length > 0) {
+                departmentDropdown.innerHTML = data.map(item => `
+                    <div class="dropdown-item" data-id="${item.id}">
+                        ${item.department}
+                    </div>
+                `).join('');
+            } else {
+                departmentDropdown.innerHTML = '<div class="dropdown-item">Служба не найдена</div>';
+            }
+
+            departmentDropdown.style.display = 'block';
+        } catch (e) {
+            console.error("Ошибка поиска служб:", e);
+        }
+    };
+
+    if (departmentSearchInput) {
+        departmentSearchInput.onfocus = () => fetchDepartments(departmentSearchInput.value);
+        departmentSearchInput.oninput = (e) => fetchDepartments(e.target.value);
+    }
+
+    if (departmentDropdown) {
+        departmentDropdown.onclick = (e) => {
+            const item = e.target.closest('.dropdown-item');
+
+            if (item && item.dataset.id) {
+                const exists = selectedDepartments.some(x => x.id === item.dataset.id);
+
+                if (!exists) {
+                    selectedDepartments.push({
+                        id: item.dataset.id,
+                        name: item.textContent.trim()
+                    });
+                }
+
+                departmentSearchInput.value = "";
+                renderSelectedDepartments();
+
+                departmentDropdown.style.display = "none"; // закрыть
+            }
+        };
+    }
+
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('department-container');
+        if (container && !container.contains(e.target)) {
+            departmentDropdown.style.display = 'none';
+        }
+    });
+
     // Элемент выбора типа простоя
     const typeSelect = document.getElementById('modal-type');
 
@@ -181,8 +261,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-// Чтобы функция была доступна везде
-window.loadDepartments = loadDepartments;
+    // Чтобы функция была доступна везде
+    window.loadDepartments = loadDepartments;
 
     // --- 3. ОБОРУДОВАНИЕ (ЖИВОЙ ПОИСК) ---
     const fetchEquipment = async (query) => {
@@ -329,10 +409,17 @@ window.loadDepartments = loadDepartments;
                 this.style.borderColor = '';
             });
 
+            if (selectedDepartments.length === 0) {
+                alert("Ошибка: выберите хотя бы одну службу!");
+                return;
+            }
+
             const payload = {
                 EAMID: "",
                 EquipmentIDs: equipmentIds,
-                DepartmentID: document.getElementById('modal-department').value,
+                // DepartmentID: document.getElementById('modal-department').value,
+                DepartmentID: selectedDepartments[0]?.id || "",
+                DepartmentIDs: selectedDepartments.map(x => x.id),
                 DowntimeTypeID: typeId,
                 StartDateTime: formatToEAMDate(document.getElementById('modal-start').value),
                 EndDateTime: formatToEAMDate(document.getElementById('modal-end').value),
@@ -729,7 +816,7 @@ async function loadMainTableData(dateVal = null) {
         if (!response.ok) throw new Error('Ошибка сервера');
 
         const data = await response.json();
-        console.log(data); //все данные по простоям
+        // console.log(data); //все данные по простоям
         let items = Array.isArray(data) ? data : Object.values(data);
         // console.log(items); //массив простоев
         const count = items.length;

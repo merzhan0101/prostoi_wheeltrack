@@ -128,6 +128,19 @@ async fn update_downtime(
         return HttpResponse::Ok().json(data);
     }
 
+    // Получаем все выбранные службы
+    let department_ids = payload
+        .get("DepartmentIDs")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    // Первая служба для записи в локальную БД
+    let first_department_id = department_ids
+        .first()
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
     let client_http = Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
@@ -140,6 +153,11 @@ async fn update_downtime(
 
         let mut one_payload = payload.clone();
         one_payload["EquipmentID"] = serde_json::json!(eq_id);
+
+        // Для локальной БД
+        one_payload["DepartmentID"] = serde_json::json!(first_department_id);
+
+        // DepartmentIDs оставляем, чтобы он ушел в ТОИР
 
         // чтобы в ТОИР не улетал EquipmentIDs
         if let Some(obj) = one_payload.as_object_mut() {

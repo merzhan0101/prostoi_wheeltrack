@@ -147,9 +147,21 @@
 
                         <div class="form-group full-width" style="margin-top:-40px;">
                             <label>Служба</label>
-                            <select id="modal-department">
-                                <option value="">Выберите службу...</option>
-                            </select>
+                            <div class="search-select-container" id="department-container">
+                                <div class="input-with-clear">
+                                    <input type="text"
+                                        class="search-input"
+                                        id="modal-department-search"
+                                        placeholder="Поиск службы..."
+                                        autocomplete="off">
+                                    <i class="fas fa-times clear-btn"></i>
+                                </div>
+
+                                <input type="hidden" id="modal-department-id">
+
+                                <div id="selected-departments" class="selected-equipments"></div>
+                                <div class="search-dropdown" id="department-dropdown"></div>
+                            </div>
                         </div>
                     </div>
 
