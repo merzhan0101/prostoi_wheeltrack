@@ -474,38 +474,6 @@ pub async fn data_update(pool: &AppState, body: Value) -> Result<wsr::UpdateData
     Ok(data)
 }
 
-// test
-// pub async fn get_name_department(
-//     pool: &AppState,
-//     name_depart: Option<String>,
-// ) -> Result<Vec<wsr::DepartmentName>> {
-//     let mut client = pool.pool_wt.get().await?;
-
-//     let mut data = wsr::DepartmentName::default();
-
-//     let like_query = format!("%{}%", name_depart.unwrap_or("".to_string()));
-
-//     let mut data_result: Vec<wsr::DepartmentName> = Vec::new();
-
-//     let mut select = Query::new(
-//         "SELECT Id, Name FROM DTDepartments WHERE Marked = 0 and Code in ('000000196', '000000209', '000000122', '000000030')",
-//     );
-//     select.bind(like_query);
-
-//     {
-//         let mut stream = select.query(&mut client).await?;
-//         while let Some(row) = stream.try_next().await? {
-//             if let QueryItem::Row(r) = row {
-//                 data.id = r.get("Id");
-//                 data.department = r.get("Name").map(|s: &str| s.to_string());
-//                 data_result.push(data.clone());
-//             }
-//         }
-//     }
-
-//     Ok(data_result)
-// }
-
 pub async fn get_name_department(
     pool: &AppState,
     name_depart: Option<String>,
