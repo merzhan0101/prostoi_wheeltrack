@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Простои</title>
+    <title>Простои - {{ area_name }}</title>
     <link rel="shortcut icon" href="/static/sit_logo_11.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap"
         rel="stylesheet">
@@ -14,13 +14,27 @@
 
 <body>
 
+    <input
+        type="hidden"
+        id="current-area-slug"
+        value="{{ area_slug }}"
+    >
+
+    <input
+        type="hidden"
+        id="current-area-department-id"
+        value="{{ area_department_id }}"
+    >
+
     <div class="wrapper">
         
         <header>
             <div class="header__Container">
                 <div class="header__info">
                     <div class="header__text">
-                        <h1 id="header_text">Простои</h1>
+                        <h1 id="header_text">
+                            Простои — {{ area_name }}
+                        </h1>
                     </div>
                     <div class="header__logo">
                         <a id="link" href="">
@@ -28,9 +42,12 @@
                         </a>
                     </div>
                     <div class="header__user">
-                        <img style="width: 30px; height: 30px;" src="/static/sit_logo_1.svg">
-                        <h3 id="user_name">prostoi</h3>
-                        <a id="logoff" href="#"><img src="/static/logout.png"></a>
+                        <div class="header__user-avatar" aria-hidden="true">P</div>
+                        <div class="header__user-details">
+                            <span class="header__user-label">Пользователь</span>
+                            <span id="user_name">prostoi</span>
+                        </div>
+                        <span class="header__user-status" title="В сети"></span>
                     </div>
                 </div>
             </div>

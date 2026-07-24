@@ -1,5 +1,5 @@
 use crate::data_base::id_search as sh;
-use crate::structures::workpiece_struct as wsr;
+use crate::structures::struct_downtimes as dsr;
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use futures_util::TryStreamExt;
@@ -9,81 +9,118 @@ use uuid::Uuid;
 
 use crate::structures::struct_pool_client::AppState;
 
-pub async fn get_name_depart(
+pub async fn get_equipment(
     pool: &AppState,
-    name_depart: Option<String>,
-) -> Result<Vec<wsr::SearchNameDepartResult>> {
+    equipment_name: Option<String>,
+    department_id: &str,
+) -> Result<Vec<dsr::SearchNameDepartResult>> {
     let mut client = pool.pool_raport.get().await?;
 
-    let mut data = wsr::SearchNameDepartResult::default();
+    let search_text = format!(
+        "%{}%",
+        equipment_name.unwrap_or_default()
+    );
 
-    let like_query = format!("%{}%", name_depart.unwrap_or("".to_string()));
+    let department_bin = Uuid::parse_str(department_id)?
+        .into_bytes()
+        .to_vec();
 
-    let mut data_result: Vec<wsr::SearchNameDepartResult> = Vec::new();
+    let mut query = Query::new(
+        "
+        SELECT TOP 10
+            Id,
+            Name
+        FROM DTEquipments
+        WHERE Name LIKE @P1
+          AND DepartmentID = @P2
+          AND Marked = 0
+        ORDER BY Name
+        ",
+    );
 
-    let mut select = Query::new("SELECT TOP 10 Id, Name FROM DTEquipments WHERE Name LIKE @P1");
-    select.bind(like_query);
+    query.bind(search_text);
+    query.bind(department_bin);
 
-    {
-        let mut stream = select.query(&mut client).await?;
-        while let Some(row) = stream.try_next().await? {
-            if let QueryItem::Row(r) = row {
-                data.id = r
+    let mut result = Vec::new();
+    let mut stream = query.query(&mut client).await?;
+
+    while let Some(item) = stream.try_next().await? {
+        if let QueryItem::Row(row) = item {
+            result.push(dsr::SearchNameDepartResult {
+                id: row
                     .get::<&[u8], _>("Id")
-                    .and_then(|bytes| Uuid::from_slice(bytes).ok().map(|u| u.to_string()));
-                data.name = r.get("Name").map(|s: &str| s.to_string());
-                data_result.push(data.clone());
-            }
+                    .and_then(|bytes| {
+                        Uuid::from_slice(bytes)
+                            .ok()
+                            .map(|uuid| uuid.to_string())
+                    }),
+
+                name: row
+                    .get::<&str, _>("Name")
+                    .map(String::from),
+            });
         }
     }
 
-    Ok(data_result)
+    Ok(result)
 }
 
 pub async fn get_name_worker(
     pool: &AppState,
-    name_depart: Option<String>,
-) -> Result<Vec<wsr::SearchNameWorkerResult>> {
+    worker_name: Option<String>,
+    place_id: i32,
+) -> Result<Vec<dsr::SearchNameWorkerResult>> {
     let mut client = pool.pool_wt.get().await?;
 
-    let mut data = wsr::SearchNameWorkerResult::default();
-
-    let like_query = format!("%{}%", name_depart.unwrap_or("".to_string()));
-
-    let mut data_result: Vec<wsr::SearchNameWorkerResult> = Vec::new();
-
-    let mut select = Query::new(
-        "SELECT Id, FIO 
-            FROM Worker 
-            WHERE FIO LIKE @P1 and Place_id = 1 and Post_id = 1",
+    let like_query = format!(
+        "%{}%",
+        worker_name.unwrap_or_default()
     );
-    select.bind(like_query);
 
-    {
-        let mut stream = select.query(&mut client).await?;
-        while let Some(row) = stream.try_next().await? {
-            if let QueryItem::Row(r) = row {
-                data.id = r.get("Id");
-                data.fio = r.get("FIO").map(|s: &str| s.to_string());
-                data_result.push(data.clone());
-            }
+    let mut query = Query::new(
+        "
+        SELECT
+            Id,
+            FIO
+        FROM Worker
+        WHERE FIO LIKE @P1
+          AND Place_id = @P2
+          AND (Post_id = 1 or Post_id = 3)
+        ORDER BY FIO
+        ",
+    );
+
+    query.bind(like_query);
+    query.bind(place_id);
+
+    let mut result = Vec::new();
+    let mut stream = query.query(&mut client).await?;
+
+    while let Some(item) = stream.try_next().await? {
+        if let QueryItem::Row(row) = item {
+            result.push(
+                dsr::SearchNameWorkerResult {
+                    id: row.get("Id"),
+
+                    fio: row
+                        .get::<&str, _>("FIO")
+                        .map(String::from),
+                },
+            );
         }
     }
 
-    Ok(data_result)
+    Ok(result)
 }
 
-pub async fn get_types(pool: &AppState) -> Result<Vec<wsr::DataTypes>> {
+pub async fn get_types(pool: &AppState) -> Result<Vec<dsr::DataTypes>> {
     let mut client = pool.pool_raport.get().await?;
 
-    let mut data = wsr::DataTypes::default();
+    let mut data = dsr::DataTypes::default();
 
-    let mut data_result: Vec<wsr::DataTypes> = Vec::new();
+    let mut data_result: Vec<dsr::DataTypes> = Vec::new();
 
-    let select = Query::new(
-        "SELECT Id, Name FROM DowntimesTypes 
-            ",
-    );
+    let select = Query::new("SELECT Id, Name FROM DowntimesTypes");
 
     {
         let mut stream = select.query(&mut client).await?;
@@ -169,18 +206,10 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
         .and_then(|s| Uuid::parse_str(s).ok())
         .map(|u| u.into_bytes().to_vec());
 
-    // let department_id_bin = body
-    //     .get("DepartmentID")
-    //     .and_then(|v| v.as_str())
-    //     .and_then(|s| Uuid::parse_str(s).ok())
-    //     .map(|u| u.into_bytes().to_vec())
-    //     .unwrap_or_default();
-
     // println!("BIN ID IS: {:#?}", bin_id);
 
     if is_empty {
-        // let insert = "insert into Downtimes (Id, EquipmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion) VALUES(@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9)";
-        
+
         let insert = "
             INSERT INTO Downtimes 
             (Id, EquipmentID, DepartmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion)
@@ -214,7 +243,20 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
             .await
             .unwrap();
     } else {
-        let update = "UPDATE Downtimes SET EquipmentID=@P1, DepartmentID=@P2, DowntimeTypeID=@P3, StartDateTime=@P4, EndDateTime=@P5, Author=@P6, Comment=@P7 WHERE Id=@P8";
+        // let update = "UPDATE Downtimes SET EquipmentID=@P1, DepartmentID=@P2, DowntimeTypeID=@P3, StartDateTime=@P4, EndDateTime=@P5, Author=@P6, Comment=@P7 WHERE Id=@P8";
+
+        let update = "
+            UPDATE Downtimes
+            SET
+                EquipmentID = @P1,
+                DepartmentID = COALESCE(@P2, DepartmentID),
+                DowntimeTypeID = @P3,
+                StartDateTime = @P4,
+                EndDateTime = @P5,
+                Author = @P6,
+                Comment = @P7
+            WHERE Id = @P8
+        ";
 
         client
             .execute(
@@ -249,26 +291,44 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
 pub async fn get_downtimes_vec_jsonn(
     pool: &AppState,
     json: Value,
-) -> Result<Vec<wsr::DowntimesRefactor>> {
+    department_id: &str,
+) -> Result<Vec<dsr::DowntimesRefactor>> {
     let mut client = pool.pool_raport.get().await?;
+    
     // let state = pool.pool_raport.state();
     // println!(
     //     "СТАТУС ПУЛА в функции: Всего соединений: {}, Открыто прямо сейчас: {}",
     //     state.connections,      // сколько физически открыто в БД
     //     state.idle_connections, // сколько из них СВОБОДНО прямо сейчас   // сколько потоков СЕЙЧАС ждут в очереди (если > 0, мы в дедлоке)
     // );
+
     let data_array = json
         .get("Data")
         .and_then(|v| v.as_array())
         .ok_or("Поле 'Data' отсутствует или не является массивом")
         .unwrap();
 
-    let mut data = wsr::DowntimesRefactor::default();
+    let mut data = dsr::DowntimesRefactor::default();
 
-    let mut data_send: Vec<wsr::DowntimesRefactor> = Vec::new();
+    let mut data_send: Vec<dsr::DowntimesRefactor> = Vec::new();
 
     for item in data_array {
-        data.EAMID = item.get("EAMID").and_then(|v| v.as_str()).map(String::from);
+        let item_department_id = item
+            .get("DepartmentID")
+            .and_then(|value| value.as_str())
+            .unwrap_or("");
+
+        // Пропускаем простои других участков.
+        if !item_department_id.eq_ignore_ascii_case(
+            department_id
+        ) {
+            continue;
+        }
+
+        data.EAMID = item
+            .get("EAMID")
+            .and_then(|value| value.as_str())
+            .map(String::from);
 
         data.EAMDocName = item
             .get("EAMDocName")
@@ -346,11 +406,11 @@ pub async fn get_data_downtime(
     pool: &AppState,
     json: Value,
     eamid: &str,
-) -> Result<wsr::GetDowntime> {
+) -> Result<dsr::GetDowntime> {
     let mut client = pool.pool_raport.get().await?;
 
     let data = json.get("Data").unwrap();
-    let mut data_toir = wsr::GetDowntime::default();
+    let mut data_toir = dsr::GetDowntime::default();
 
     data_toir.EAMID = Some(eamid.to_string());
 
@@ -417,9 +477,9 @@ pub async fn get_data_downtime(
     Ok(data_toir)
 }
 
-pub async fn data_update(pool: &AppState, body: Value) -> Result<wsr::UpdateData> {
+pub async fn data_update(pool: &AppState, body: Value) -> Result<dsr::UpdateData> {
     let mut client = pool.pool_raport.get().await?;
-    let mut data = wsr::UpdateData::default();
+    let mut data = dsr::UpdateData::default();
 
     data.EAMID = body.get("EAMID").and_then(|v| v.as_str()).map(String::from);
 
@@ -442,10 +502,10 @@ pub async fn data_update(pool: &AppState, body: Value) -> Result<wsr::UpdateData
         }
     }
 
-    data.EAMVersion = body
+    /*data.EAMVersion = body
         .get("EAMVersion")
         .and_then(|v| v.as_str())
-        .map(String::from);
+        .map(String::from);*/
     data.EquipmentID = body
         .get("EquipmentID")
         .and_then(|v| v.as_str())
@@ -477,14 +537,14 @@ pub async fn data_update(pool: &AppState, body: Value) -> Result<wsr::UpdateData
 pub async fn get_name_department(
     pool: &AppState,
     name_depart: Option<String>,
-) -> Result<Vec<wsr::DepartmentName>> {
+) -> Result<Vec<dsr::DepartmentName>> {
     let mut client = pool.pool_raport.get().await?;
 
-    let mut data = wsr::DepartmentName::default();
+    let mut data = dsr::DepartmentName::default();
 
     let like_query = format!("%{}%", name_depart.unwrap_or("".to_string()));
 
-    let mut data_result: Vec<wsr::DepartmentName> = Vec::new();
+    let mut data_result: Vec<dsr::DepartmentName> = Vec::new();
 
     let mut select = Query::new("SELECT Id, Name FROM DTDepartments WHERE Marked = 0 and Name in ('Участок по ремонту оборудования проката', 'Участок по ремонту гидравлического оборудования', 'Отдел АСУП колесного производства')");
     // select.bind(like_query);

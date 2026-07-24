@@ -60,13 +60,13 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(data_state.clone())
-            .configure(infra::downtime::conf_workpiece_downtime)
+            .configure(infra::downtimes::conf_downtimes)
             .service(fs::Files::new("/static", "./static").show_files_listing())
     })
 
-    // .bind("127.0.0.1:2000")?
-    .bind("0.0.0.0:8080")?
-    // .bind("10.110.7.253:8080")?
+    .bind("0.0.0.0:8080")? //localhost:8080
+    // .bind("10.110.7.253:8080")? //boevoi:8080
+
     .run()
     .await
 }

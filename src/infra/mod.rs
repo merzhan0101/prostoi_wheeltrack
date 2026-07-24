@@ -1,2 +1,2 @@
-pub mod downtime;
-pub mod struct_templat;
+pub mod struct_template;
+pub mod downtimes;

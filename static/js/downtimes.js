@@ -1,4 +1,64 @@
+function getCurrentAreaSlug() {
+  const element =
+    document.getElementById('current-area-slug');
+
+  if (!element || !element.value) {
+    throw new Error(
+      'Не удалось определить текущий участок'
+    );
+  }
+
+  return element.value;
+}
+
+function getCurrentAreaDepartmentId() {
+  const element = document.getElementById(
+    'current-area-department-id'
+  );
+
+  if (!element || !element.value) {
+    throw new Error(
+      'Не удалось определить DepartmentID участка'
+    );
+  }
+
+  return element.value;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    const currentAreaSlugElement =
+        document.getElementById('current-area-slug');
+
+    const currentAreaDepartmentElement =
+        document.getElementById(
+        'current-area-department-id'
+        );
+
+    if (
+        !currentAreaSlugElement ||
+        !currentAreaDepartmentElement
+    ) {
+        console.error(
+        'Не найдены данные текущего участка'
+        );
+
+        return;
+    }
+
+    // const CURRENT_AREA_SLUG =
+    //     currentAreaSlugElement.value;
+
+    // const CURRENT_AREA_DEPARTMENT_ID =
+    //     currentAreaDepartmentElement.value;
+
+    // 'DOMContentLoaded',
+    // function () {
+    //     console.log('Текущий участок:', {
+    //     slug: getCurrentAreaSlug(),
+    //     departmentId: getCurrentAreaDepartmentId()
+    //     });
+    // }
+    
     // --- ЭЛЕМЕНТЫ МОДАЛКИ ДОБАВЛЕНИЯ ---
     const entryModal = document.getElementById('entryModal');
     const addNewBtn = document.getElementById('addNewBtn');
@@ -45,13 +105,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    let selectedDepartments = [];
+    let selectedResponsibleDepartments = [];
 
     function renderSelectedDepartments() {
         const box = document.getElementById('selected-departments');
         if (!box) return;
 
-        box.innerHTML = selectedDepartments.map(dep => `
+        box.innerHTML = selectedResponsibleDepartments.map(dep => `
             <span class="equipment-chip">
                 ${dep.name}
                 <button type="button" data-id="${dep.id}">×</button>
@@ -60,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         box.querySelectorAll('button').forEach(btn => {
             btn.onclick = () => {
-                selectedDepartments = selectedDepartments.filter(x => x.id !== btn.dataset.id);
+                selectedResponsibleDepartments = selectedResponsibleDepartments.filter(x => x.id !== btn.dataset.id);
                 renderSelectedDepartments();
             };
         });
@@ -101,10 +161,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const item = e.target.closest('.dropdown-item');
 
             if (item && item.dataset.id) {
-                const exists = selectedDepartments.some(x => x.id === item.dataset.id);
+                const exists = selectedResponsibleDepartments.some(x => x.id === item.dataset.id);
 
                 if (!exists) {
-                    selectedDepartments.push({
+                    selectedResponsibleDepartments.push({
                         id: item.dataset.id,
                         name: item.textContent.trim()
                     });
@@ -134,7 +194,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const fetchWorkers = async (query) => {
         try {
-            const response = await fetch(`/api/workers?q=${encodeURIComponent(query)}`);
+            // const response = await fetch(`/api/workers?q=${encodeURIComponent(query)}`);
+
+            const areaSlug = getCurrentAreaSlug();
+            const response = await fetch(
+                `/api/${areaSlug}/workers` +
+                `?q=${encodeURIComponent(query)}`
+            );
+
             const data = await response.json();
 
             if (data.length > 0) {
@@ -244,7 +311,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const response = await fetch('/api/departments');
             const data = await response.json();
-            console.log("Загруженные службы:", data);
+            // console.log("Загруженные службы:", data);
 
             // Очищаем текущие опции (кроме первой "Выберите службу...")
             typeSelect.innerHTML = '<option value="">Выберите службу...</option>';
@@ -267,7 +334,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- 3. ОБОРУДОВАНИЕ (ЖИВОЙ ПОИСК) ---
     const fetchEquipment = async (query) => {
         try {
-            const response = await fetch(`/api/equipment?q=${encodeURIComponent(query)}`);
+            const areaSlug = getCurrentAreaSlug();
+
+            const response = await fetch(
+                `/api/${areaSlug}/equipment` +
+                `?q=${encodeURIComponent(query)}`
+            );
             const data = await response.json();
 
             if (data.length > 0) {
@@ -409,23 +481,44 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.style.borderColor = '';
             });
 
-            if (selectedDepartments.length === 0) {
+            if (selectedResponsibleDepartments.length === 0) {
                 alert("Ошибка: выберите хотя бы одну службу!");
                 return;
             }
 
             const payload = {
+                // Area: CURRENT_AREA_SLUG,
+                Area: getCurrentAreaSlug(),
+                EAMID: "",
+                EquipmentIDs: equipmentIds,
+                DepartmentIDs: selectedResponsibleDepartments.map(
+                    department => department.id
+                ),
+                DowntimeTypeID: typeId,
+                StartDateTime: formatToEAMDate(
+                    document.getElementById('modal-start').value
+                ),
+                EndDateTime: formatToEAMDate(
+                    document.getElementById('modal-end').value
+                ),
+                Author: document.getElementById(
+                    'modal-worker-search'
+                ).value,
+                Comment: comment
+            };
+
+            /*const payload = {
                 EAMID: "",
                 EquipmentIDs: equipmentIds,
                 // DepartmentID: document.getElementById('modal-department').value,
-                DepartmentID: selectedDepartments[0]?.id || "",
-                DepartmentIDs: selectedDepartments.map(x => x.id),
+                DepartmentID: selectedResponsibleDepartments[0]?.id || "",
+                DepartmentIDs: selectedResponsibleDepartments.map(x => x.id),
                 DowntimeTypeID: typeId,
                 StartDateTime: formatToEAMDate(document.getElementById('modal-start').value),
                 EndDateTime: formatToEAMDate(document.getElementById('modal-end').value),
                 Author: document.getElementById('modal-worker-search').value,
                 Comment: document.getElementById('modal-comment').value
-            };
+            };*/
 
             try {
                 const response = await fetch('/api/update_downtime', {
@@ -477,7 +570,11 @@ if (editSearchInput) {
         }
 
         // Пользуемся твоим готовым роутом /api/equipment
-        fetch(`/api/equipment?q=${encodeURIComponent(query)}`)
+        const areaSlug = getCurrentAreaSlug();
+            fetch(
+            `/api/${areaSlug}/equipment` +
+            `?q=${encodeURIComponent(query)}`
+            )
             .then(res => res.json())
             .then(items => {
                 editDropdown.innerHTML = '';
@@ -507,7 +604,12 @@ const setupEquipmentSearch = (inputId, dropdownId, hiddenId, containerId) => {
 
     const fetchEq = async (query) => {
         try {
-            const response = await fetch(`/api/equipment?q=${encodeURIComponent(query)}`);
+            const areaSlug = getCurrentAreaSlug();
+
+            const response = await fetch(
+                `/api/${areaSlug}/equipment` +
+                `?q=${encodeURIComponent(query)}`
+            );
             const data = await response.json();
             dropdown.innerHTML = data.map(item => `
                 <div class="dropdown-item" data-id="${item.id}">${item.name}</div>
@@ -544,7 +646,14 @@ const setupWorkerSearch = (inputId, dropdownId, hiddenId, containerId) => {
 
     const fetchW = async (query) => {
         try {
-            const response = await fetch(`/api/workers?q=${encodeURIComponent(query)}`);
+            // const response = await fetch(`/api/workers?q=${encodeURIComponent(query)}`);
+            const areaSlug = getCurrentAreaSlug();
+
+            const response = await fetch(
+                `/api/${areaSlug}/workers` +
+                `?q=${encodeURIComponent(query)}`
+            );
+
             const data = await response.json();
             dropdown.innerHTML = data.map(item => `
                 <div class="dropdown-item" data-id="${item.id}">${item.fio}</div>
@@ -655,6 +764,8 @@ function formatToEAMDate(htmlDate) {
 document.addEventListener('DOMContentLoaded', function () {
     // --- УНИВЕРСАЛЬНЫЙ ПОИСК ---
     const setupSearch = (inputId, dropdownId, hiddenId, containerId, apiPath, fieldName) => {
+        const areaSlug = getCurrentAreaSlug();
+
         const input = document.getElementById(inputId);
         const dropdown = document.getElementById(dropdownId);
         const hidden = document.getElementById(hiddenId);
@@ -698,9 +809,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Инициализация всех поисков
     // setupSearch('modal-equipment-search', 'eq-dropdown', 'modal-equipment-id', 'eq-container', '/api/equipment', 'name');
-    setupSearch('edit-equipment-search', 'edit-eq-dropdown', 'edit-equipment-id', 'edit-eq-container', '/api/equipment', 'name');
+
+    /*setupSearch('edit-equipment-search', 'edit-eq-dropdown', 'edit-equipment-id', 'edit-eq-container', '/api/equipment', 'name');
     setupSearch('modal-worker-search', 'worker-dropdown', 'modal-worker-id', 'worker-container', '/api/workers', 'fio');
-    setupSearch('edit-worker-search', 'edit-worker-dropdown', 'edit-worker-id', 'edit-worker-container', '/api/workers', 'fio');
+    setupSearch('edit-worker-search', 'edit-worker-dropdown', 'edit-worker-id', 'edit-worker-container', '/api/workers', 'fio');*/
+
+    const areaSlug = getCurrentAreaSlug();
+
+    const equipmentApiPath =
+      `/api/${areaSlug}/equipment`;
+
+    const workersApiPath =
+      `/api/${areaSlug}/workers`;
+
+    setupSearch(
+      'edit-equipment-search',
+      'edit-eq-dropdown',
+      'edit-equipment-id',
+      'edit-eq-container',
+      equipmentApiPath,
+      'name'
+    );
+
+    setupSearch(
+      'modal-worker-search',
+      'worker-dropdown',
+      'modal-worker-id',
+      'worker-container',
+      workersApiPath,
+      'fio'
+    );
+
+    setupSearch(
+      'edit-worker-search',
+      'edit-worker-dropdown',
+      'edit-worker-id',
+      'edit-worker-container',
+      workersApiPath,
+      'fio'
+    );
 
     // --- МОДАЛКИ ---
     const entryModal = document.getElementById('entryModal');
@@ -776,47 +923,86 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // --- ЗАГРУЗКА ДАННЫХ В ТАБЛИЦУ ---
 async function loadMainTableData(dateVal = null) {
-    const tableBody = document.getElementById('table-body');
-    if (!tableBody) return;
+    const tableBody =
+        document.getElementById('table-body');
 
-    tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Загрузка данных...</td></tr>';
+    if (!tableBody) {
+        return;
+    }
+
+    let areaSlug;
 
     try {
-        // const response = await fetch('/api/workpiece/downtime/data');
+        areaSlug = getCurrentAreaSlug();
+    } catch (error) {
+        console.error(error);
 
-        // ===============================================================================
+        tableBody.innerHTML = `
+        <tr>
+            <td colspan="10" style="color: red; text-align: center;">
+            ${error.message}
+            </td>
+        </tr>
+        `;
 
+        return;
+    }
+
+    tableBody.innerHTML = `
+        <tr>
+        <td colspan="10" style="text-align: center;">
+            Загрузка данных...
+        </td>
+        </tr>
+    `;
+
+    try {
         let response;
 
         if (dateVal) {
-            const dateForToir = dateVal.replaceAll('-', '');
+        const dateForToir =
+            dateVal.replaceAll('-', '');
 
-            const payload = {
-                Filter_StartDate: dateForToir + "000000",
-                Filter_EndDate: dateForToir + "235959",
-                WithEAMDowntimes: 1,
-                ShowDeleted: 0,
-                MaxRows: 50,
-                Offset: 0
-            };
+        const payload = {
+            Filter_StartDate:
+            dateForToir + '000000',
 
-            response = await fetch('/api/get_downtime_list/filter', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
+            Filter_EndDate:
+            dateForToir + '235959',
+
+            WithEAMDowntimes: 1,
+            ShowDeleted: 0,
+            MaxRows: 50,
+            Offset: 0
+        };
+
+        response = await fetch(
+            `/api/${areaSlug}/downtimes/filter`,
+            {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+            }
+        );
         } else {
-            response = await fetch('/api/workpiece/downtime/data');
+        response = await fetch(
+            `/api/${areaSlug}/downtimes`
+        );
         }
 
-        // ===============================================================================
+        if (!response.ok) {
+        const errorText = await response.text();
 
-        if (!response.ok) throw new Error('Ошибка сервера');
+        throw new Error(
+            `Ошибка API ${response.status}: ${errorText}`
+        );
+        }
 
         const data = await response.json();
         // console.log(data); //все данные по простоям
+
         let items = Array.isArray(data) ? data : Object.values(data);
         // console.log(items); //массив простоев
         const count = items.length;
