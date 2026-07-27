@@ -481,10 +481,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.style.borderColor = '';
             });
 
-            if (selectedResponsibleDepartments.length === 0) {
+            /*if (selectedResponsibleDepartments.length === 0) {
                 alert("Ошибка: выберите хотя бы одну службу!");
                 return;
-            }
+            }*/
 
             const payload = {
                 // Area: CURRENT_AREA_SLUG,
@@ -506,19 +506,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 ).value,
                 Comment: comment
             };
-
-            /*const payload = {
-                EAMID: "",
-                EquipmentIDs: equipmentIds,
-                // DepartmentID: document.getElementById('modal-department').value,
-                DepartmentID: selectedResponsibleDepartments[0]?.id || "",
-                DepartmentIDs: selectedResponsibleDepartments.map(x => x.id),
-                DowntimeTypeID: typeId,
-                StartDateTime: formatToEAMDate(document.getElementById('modal-start').value),
-                EndDateTime: formatToEAMDate(document.getElementById('modal-end').value),
-                Author: document.getElementById('modal-worker-search').value,
-                Comment: document.getElementById('modal-comment').value
-            };*/
 
             try {
                 const response = await fetch('/api/update_downtime', {
