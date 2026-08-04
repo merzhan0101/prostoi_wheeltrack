@@ -489,6 +489,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const payload = {
                 // Area: CURRENT_AREA_SLUG,
                 Area: getCurrentAreaSlug(),
+                DepartmentID: getCurrentAreaDepartmentId(),
+
                 EAMID: "",
                 EquipmentIDs: equipmentIds,
                 DepartmentIDs: selectedResponsibleDepartments.map(
