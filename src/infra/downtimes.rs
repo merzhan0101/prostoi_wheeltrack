@@ -574,16 +574,68 @@ async fn update_downtime(
         );
     }
 
-    let department_ids = payload
+    // Проверяем, что ни одно выбранное оборудование
+    // уже не имеет незавершённого простоя.
+    for equipment in &equipment_ids {
+        let Some(equipment_id) = equipment.as_str() else {
+            continue;
+        };
+
+        match db::has_active_downtime(&pool, equipment_id).await {
+            Ok(true) => {
+                return HttpResponse::Ok().json(
+                    serde_json::json!({
+                        "Posted": 0,
+                        "ErrorMessage": format!(
+                            "Оборудование уже имеет незавершённый простой. Сначала завершите его через редактирование."
+                        )
+                    }),
+                );
+            }
+
+            Ok(false) => {}
+
+            Err(error) => {
+                eprintln!(
+                    "Ошибка проверки активного простоя оборудования {}: {}",
+                    equipment_id,
+                    error
+                );
+
+                return HttpResponse::InternalServerError().json(
+                    serde_json::json!({
+                        "Posted": 0,
+                        "ErrorMessage": "Ошибка проверки оборудования"
+                    }),
+                );
+            }
+        }
+    }
+
+    /*let department_ids = payload
         .get("DepartmentIDs")
         .and_then(|value| value.as_array())
         .cloned()
-        .unwrap_or_default();
+        .unwrap_or_default();*/
 
-    let first_department_id = department_ids
+    /*let first_department_id = department_ids
         .first()
         .and_then(|value| value.as_str())
+        .unwrap_or("");*/
+
+    let current_department_id = payload
+        .get("DepartmentID")
+        .and_then(|value| value.as_str())
         .unwrap_or("");
+
+    if current_department_id.is_empty() {
+        return HttpResponse::BadRequest().json(
+            serde_json::json!({
+                "Posted": 0,
+                "ErrorMessage": "Не передан DepartmentID"
+            }),
+        );
+    }
 
     for equipment in equipment_ids {
         let Some(equipment_id) = equipment.as_str() else {
@@ -596,7 +648,10 @@ async fn update_downtime(
             serde_json::json!(equipment_id);
 
         one_payload["DepartmentID"] =
-            serde_json::json!(first_department_id);
+            serde_json::json!(current_department_id);
+            
+        // one_payload["DepartmentID"] =
+        //     serde_json::json!(first_department_id);
 
         if let Some(object) = one_payload.as_object_mut() {
             object.remove("EquipmentIDs");

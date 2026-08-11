@@ -28,15 +28,34 @@ pub async fn get_equipment(
     let mut query = Query::new(
         "
         SELECT TOP 10
-            Id,
-            Name
-        FROM DTEquipments
-        WHERE Name LIKE @P1
-          AND DepartmentID = @P2
-          AND Marked = 0
-        ORDER BY Name
+            e.Id,
+            e.Name
+        FROM DTEquipments e
+        WHERE e.Name LIKE @P1
+        AND e.DepartmentID = @P2
+        AND e.Marked = 0
+        AND NOT EXISTS (
+            SELECT 1
+            FROM Downtimes d
+            WHERE d.EquipmentID = e.Id
+                AND d.EndDateTime IS NULL
+        )
+        ORDER BY e.Name
         ",
     );
+
+    // let mut query = Query::new(
+    //     "
+    //     SELECT TOP 10
+    //         Id,
+    //         Name
+    //     FROM DTEquipments
+    //     WHERE Name LIKE @P1
+    //       AND DepartmentID = @P2
+    //       AND Marked = 0
+    //     ORDER BY Name
+    //     ",
+    // );
 
     query.bind(search_text);
     query.bind(department_bin);
@@ -136,6 +155,38 @@ pub async fn get_types(pool: &AppState) -> Result<Vec<dsr::DataTypes>> {
     }
 
     Ok(data_result)
+}
+
+pub async fn has_active_downtime(
+    pool: &AppState,
+    equipment_id: &str,
+) -> Result<bool> {
+    let mut client = pool.pool_raport.get().await?;
+
+    let equipment_id_bin = Uuid::parse_str(equipment_id)?
+        .into_bytes()
+        .to_vec();
+
+    let mut query = Query::new(
+        "
+        SELECT TOP 1 1
+        FROM Downtimes
+        WHERE EquipmentID = @P1
+          AND EndDateTime IS NULL
+        ",
+    );
+
+    query.bind(equipment_id_bin);
+
+    let mut stream = query.query(&mut client).await?;
+
+    while let Some(item) = stream.try_next().await? {
+        if let QueryItem::Row(_) = item {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }
 
 pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> Result<()> {

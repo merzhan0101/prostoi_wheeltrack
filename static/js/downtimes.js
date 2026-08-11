@@ -367,7 +367,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const item = e.target.closest('.dropdown-item');
 
             if (item && item.dataset.id) {
-                const typeText = document
+
+                /*const typeText = document
                     .getElementById('modal-type')
                     .selectedOptions[0]
                     ?.textContent
@@ -403,7 +404,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     eqSearchInput.value = item.textContent.trim();
                     eqHiddenId.value = item.dataset.id;
                     renderSelectedEquipments();
+                }*/
+
+                const exists = selectedEquipments.some(
+                    x => x.id === item.dataset.id
+                );
+
+                if (!exists) {
+                    selectedEquipments.push({
+                        id: item.dataset.id,
+                        name: item.textContent.trim()
+                    });
                 }
+
+                eqSearchInput.value = '';
+                eqHiddenId.value = '';
+
+renderSelectedEquipments();
 
                 eqDropdown.style.display = 'none';
             }
@@ -444,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
 
             // Берем ID оборудования именно из скрытого поля!
-            const typeText = document
+            /*const typeText = document
                 .getElementById('modal-type')
                 .selectedOptions[0]
                 ?.textContent
@@ -460,15 +477,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const equipmentIds = isCombined
                 ? selectedEquipments.map(x => x.id)
-                : [document.getElementById('modal-equipment-id').value];
+                : [document.getElementById('modal-equipment-id').value];*/
+
+            const equipmentIds = selectedEquipments.map(x => x.id);
 
             const typeId = document.getElementById('modal-type').value;
             const comment = document.getElementById('modal-comment').value.trim();
 
-            if (equipmentIds.length === 0 || equipmentIds.some(x => !x)) {
-                alert("Ошибка: Выберите оборудование из выпадающего списка!");
+            if (equipmentIds.length === 0) {
+                alert("Ошибка: Выберите хотя бы одно оборудование!");
                 return;
             }
+
+            // if (equipmentIds.length === 0 || equipmentIds.some(x => !x)) {
+            //     alert("Ошибка: Выберите оборудование из выпадающего списка!");
+            //     return;
+            // }
 
             if (!comment) {
                 alert("Ошибка: Поле 'Комментарий' обязательно для заполнения!");
