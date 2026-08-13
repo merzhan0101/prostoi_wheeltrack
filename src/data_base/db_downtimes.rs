@@ -597,7 +597,16 @@ pub async fn get_name_department(
 
     let mut data_result: Vec<dsr::DepartmentName> = Vec::new();
 
-    let mut select = Query::new("SELECT Id, Name FROM DTDepartments WHERE Marked = 0 and Name in ('Участок по ремонту оборудования проката', 'Участок по ремонту гидравлического оборудования', 'Отдел АСУП колесного производства')");
+    // let mut select = Query::new("SELECT Id, Name FROM DTDepartments WHERE Marked = 0 and Name in ('Участок по ремонту оборудования проката', 'Участок по ремонту гидравлического оборудования', 'Отдел АСУП колесного производства')");
+    let mut select = Query::new(
+        "  SELECT Id, Name
+                FROM DTDepartments
+                WHERE Id IN (
+                    0x40FE0563C04A11F0A48D00155D011305,
+                    0xC3DF935DC16311ED816300155D16FE68,
+                    0xF26321C79D6C11ED816300155D16FE68
+                );"
+    );
     // select.bind(like_query);
 
     {
