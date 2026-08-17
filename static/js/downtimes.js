@@ -25,6 +25,20 @@ function getCurrentAreaDepartmentId() {
   return element.value;
 }
 
+    // for alert
+    function showToast(message) {
+        const toast = document.getElementById('custom-toast');
+        const text = document.getElementById('toast-message');
+
+        text.textContent = message;
+
+        toast.classList.add('show');
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
 document.addEventListener('DOMContentLoaded', function () {
     const currentAreaSlugElement =
         document.getElementById('current-area-slug');
@@ -70,19 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const eqDropdown = document.getElementById('eq-dropdown');
     const eqHiddenId = document.getElementById('modal-equipment-id');
 
-    // for alert
-    function showToast(message) {
-        const toast = document.getElementById('custom-toast');
-        const text = document.getElementById('toast-message');
 
-        text.textContent = message;
-
-        toast.classList.add('show');
-
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
 
     let selectedEquipments = [];
 
@@ -902,6 +904,58 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- ОБРАБОТКА ФОРМ ---
     document.getElementById('editForm').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    const payload = {
+        Area: getCurrentAreaSlug(),
+        DepartmentID: getCurrentAreaDepartmentId(),
+        DepartmentIDs: [getCurrentAreaDepartmentId()],
+        EAMID: document.getElementById('edit-entry-id').value,
+        EquipmentID: document.getElementById('edit-equipment-id').value,
+        StartDateTime: formatToEAMDate(document.getElementById('edit-start').value),
+        EndDateTime: formatToEAMDate(document.getElementById('edit-end').value),
+        DowntimeTypeID: document.getElementById('edit-type').value,
+        Author: document.getElementById('edit-worker-search').value,
+        Comment: document.getElementById('edit-comment').value
+    };
+
+    try {
+        const response = await fetch('/api/update_downtime', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        // Получаем ответ как текст сначала для диагностики
+        const responseText = await response.text();
+        // console.log('Ответ от сервера:', responseText);
+        
+        // Парсим JSON
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error('Ошибка парсинга JSON:', parseError);
+            alert('❌ Ошибка: сервер вернул некорректный ответ');
+            return;
+        }
+        
+        // Проверяем результат
+        if (result.Posted === 1) {
+            showToast("✅ Простой успешно обновлён");
+            setTimeout(() => location.reload(), 1200);
+        } else {
+            // Показываем понятную ошибку
+            const errorMsg = result.ErrorMessage || "Неизвестная ошибка";
+            alert("❌ Ошибка: " + errorMsg);
+        }
+    } catch (err) {
+        console.error('Ошибка:', err);
+        alert('❌ Сетевая ошибка при сохранении. Проверьте подключение к серверу.');
+    }
+};
+
+    /*document.getElementById('editForm').onsubmit = async (e) => {
         e.preventDefault();
         const payload = {
             EAMID: document.getElementById('edit-entry-id').value,
@@ -931,7 +985,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Ошибка: ' + result.ErrorMessage);
             }
         } catch (err) { alert('Ошибка сохранения'); }
-    };
+    };*/
 });
 
 // --- ЗАГРУЗКА ДАННЫХ В ТАБЛИЦУ ---

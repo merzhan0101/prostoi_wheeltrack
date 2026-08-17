@@ -123,9 +123,25 @@ pub struct UpdateData {
     pub EAMVersion: Option<String>,
     pub EAMID: Option<String>,
     pub EquipmentID: Option<String>,
+    pub DepartmentID: Option<String>,
+    pub DepartmentIDs: Option<Vec<String>>,  // Добавляем массив служб
     pub StartDateTime: Option<String>,
     pub EndDateTime: Option<String>,
     pub DowntimeTypeID: Option<String>,
     pub Comment: Option<String>,
     pub Author: Option<String>,
+    pub Area: Option<String>,  // Добавляем Area
 }
+
+// #[allow(non_snake_case)]
+// #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+// pub struct UpdateData {
+//     pub EAMVersion: Option<String>,
+//     pub EAMID: Option<String>,
+//     pub EquipmentID: Option<String>,
+//     pub StartDateTime: Option<String>,
+//     pub EndDateTime: Option<String>,
+//     pub DowntimeTypeID: Option<String>,
+//     pub Comment: Option<String>,
+//     pub Author: Option<String>,
+// }

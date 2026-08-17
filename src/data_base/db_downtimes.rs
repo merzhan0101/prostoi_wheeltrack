@@ -528,7 +528,7 @@ pub async fn get_data_downtime(
     Ok(data_toir)
 }
 
-pub async fn data_update(pool: &AppState, body: Value) -> Result<dsr::UpdateData> {
+/*pub async fn data_update(pool: &AppState, body: Value) -> Result<dsr::UpdateData> {
     let mut client = pool.pool_raport.get().await?;
     let mut data = dsr::UpdateData::default();
 
@@ -583,6 +583,47 @@ pub async fn data_update(pool: &AppState, body: Value) -> Result<dsr::UpdateData
         .map(String::from);
 
     Ok(data)
+}*/
+
+pub async fn data_update(pool: &AppState, body: Value) -> Result<dsr::UpdateData> {
+    let mut client = pool.pool_raport.get().await?;
+    let mut data = dsr::UpdateData::default();
+
+    data.EAMID = body.get("EAMID").and_then(|v| v.as_str()).map(String::from);
+
+    // Получаем EAMVersion из БД
+    if let Some(eamid) = &data.EAMID {
+        let bin_id = Uuid::parse_str(eamid)
+            .map(|u| u.into_bytes().to_vec())
+            .unwrap_or_default();
+
+        let mut select_version = Query::new("SELECT TOP 1 EAMVersion FROM Downtimes WHERE Id=@P1");
+        select_version.bind(bin_id);
+
+        let mut stream = select_version.query(&mut client).await?;
+        while let Some(row) = stream.try_next().await? {
+            if let QueryItem::Row(r) = row {
+                data.EAMVersion = r.get(0).map(|s: &str| s.to_string());
+                break;
+            }
+        }
+    }
+
+    // Заполняем остальные поля
+    data.EquipmentID = body.get("EquipmentID").and_then(|v| v.as_str()).map(String::from);
+    data.DowntimeTypeID = body.get("DowntimeTypeID").and_then(|v| v.as_str()).map(String::from);
+    data.StartDateTime = body.get("StartDateTime").and_then(|v| v.as_str()).map(String::from);
+    data.EndDateTime = body.get("EndDateTime").and_then(|v| v.as_str()).map(String::from);
+    data.Author = body.get("Author").and_then(|v| v.as_str()).map(String::from);
+    data.Comment = body.get("Comment").and_then(|v| v.as_str()).map(String::from);
+    
+    // Добавляем DepartmentID если есть
+    data.DepartmentID = body.get("DepartmentID").and_then(|v| v.as_str()).map(String::from);
+    
+    // Добавляем Posted как false (или true, зависит от ТОИР)
+    // data.Posted = Some("false".to_string());
+
+    Ok(data)
 }
 
 pub async fn get_name_department(
@@ -624,3 +665,4 @@ pub async fn get_name_department(
 
     Ok(data_result)
 }
+
