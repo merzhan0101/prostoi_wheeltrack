@@ -1210,3 +1210,58 @@ footer {
     color: #22c55e;
     font-size: 20px;
 }
+
+/* Стили для кнопки ИНСТРУКЦИЯ */
+.btn-ins {
+    background: #f59e0b;
+    color: white;
+    box-shadow: 0 10px 20px rgba(245, 158, 11, 0.25);
+}
+
+.btn-ins:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 25px rgba(245, 158, 11, 0.35);
+    filter: brightness(1.1);
+}
+
+.btn-ins i {
+    font-size: 16px;
+}
+
+/* Стили для модального окна инструкции */
+#instructionModal .modal-content {
+    max-width: 900px;
+    animation: modalSlide 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+#instructionModal .modal-header h2 {
+    font-size: 1.3rem;
+}
+
+#instructionModal .modal-body {
+    padding: 30px 40px;
+}
+
+#instructionModal .modal-footer {
+    justify-content: center;
+    padding: 20px 40px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+}
+
+#instructionModal .btn-save {
+    background: #f59e0b;
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);
+}
+
+#instructionModal .btn-save:hover {
+    background: #d97706;
+    box-shadow: 0 12px 24px rgba(245, 158, 11, 0.4);
+}
+
+.actions-container {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}

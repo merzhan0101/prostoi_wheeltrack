@@ -1193,3 +1193,76 @@ document.querySelectorAll('.clear-btn').forEach(btn => {
         }
     };
 });
+
+// ============================================
+// ФУНКЦИИ ДЛЯ МОДАЛЬНОГО ОКНА ИНСТРУКЦИИ
+// ============================================
+
+function openInstructionModal() {
+    const modal = document.getElementById('instructionModal');
+    if (!modal) {
+        console.error('Модальное окно инструкции не найдено');
+        return;
+    }
+    modal.style.display = 'flex';
+    // Анимация появления
+    const content = modal.querySelector('.modal-content');
+    if (content) {
+        content.style.animation = 'none';
+        // Принудительный рефлоу
+        void content.offsetHeight;
+        content.style.animation = 'modalSlide 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28)';
+    }
+}
+
+function closeInstructionModal() {
+    const modal = document.getElementById('instructionModal');
+    if (!modal) {
+        console.error('Модальное окно инструкции не найдено');
+        return;
+    }
+    modal.style.display = 'none';
+}
+
+// Делаем функции глобальными
+window.openInstructionModal = openInstructionModal;
+window.closeInstructionModal = closeInstructionModal;
+
+// ============================================
+// ДОПОЛНИТЕЛЬНЫЕ ОБРАБОТЧИКИ ДЛЯ ИНСТРУКЦИИ
+// ============================================
+
+// Ждём загрузки DOM для добавления обработчиков
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработчик кнопки инструкции
+    const instructionBtn = document.getElementById('instructionBtn');
+    if (instructionBtn) {
+        instructionBtn.addEventListener('click', openInstructionModal);
+    }
+    
+    // Обработчик крестика (на случай, если onclick в HTML не сработал)
+    const closeBtn = document.querySelector('#instructionModal .close-modal');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeInstructionModal);
+    }
+    
+    // Закрытие по клику на фон
+    const modal = document.getElementById('instructionModal');
+    if (modal) {
+        modal.addEventListener('click', function(event) {
+            if (event.target === modal) {
+                closeInstructionModal();
+            }
+        });
+    }
+    
+    // Закрытие по Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('instructionModal');
+            if (modal && modal.style.display === 'flex') {
+                closeInstructionModal();
+            }
+        }
+    });
+});
