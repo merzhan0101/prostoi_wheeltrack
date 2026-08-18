@@ -1,0 +1,422 @@
+:root{
+    --bg:        #f1f5f9;
+    --card:      #ffffff;
+    --line:      #e2e8f0;
+    --ink:       #0f172a;
+    --muted:     #64748b;
+    --blue:      #2563eb;
+    --blue-2:    #0ea5e9;
+    --green:     #16a34a;
+    --amber:     #f59e0b;
+    --red:       #ef4444;
+    --fill-soft: #f8fafc;
+    --shadow:    0 4px 16px rgba(15,23,42,.06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    font-family: 'Montserrat', system-ui, sans-serif;
+    color: var(--ink);
+    overflow: hidden;
+}
+
+.mn-wrap {
+    height: 100vh;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.lbl {
+    display: block;
+    margin: 0;
+    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+/* ==================== ВЕРХНЯЯ ПАНЕЛЬ ==================== */
+
+.mn-statusbar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 12px 22px;
+    margin: 0 140px;
+}
+
+.mn-statusbar h1 {
+    margin: 3px 0 0;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+.mn-clock { margin-left: auto; text-align: right; }
+
+.mn-clock__time {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--blue);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mn-clock__date {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.mn-filters { display: flex; gap: 8px; }
+
+.mn-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 13px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--fill-soft);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.mn-filter:hover { border-color: var(--blue-2); }
+
+.mn-filter.is-active {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: #fff;
+}
+
+.mn-filter__dot { width: 9px; height: 9px; border-radius: 50%; }
+.mn-filter__count { font-size: 14px; font-weight: 800; color: var(--ink); }
+.mn-filter.is-active .mn-filter__count { color: #fff; }
+
+/* ==================== УЧАСТКИ ==================== */
+
+.mn-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.mn-area {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--card);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.mn-area__name {
+    margin: 0;
+    padding: 13px 16px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.mn-area__list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.mn-area__list::-webkit-scrollbar { width: 6px; }
+.mn-area__list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.mn-eq {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 10px;
+    align-items: center;
+    padding: 4px 10px 4px 8px;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--line);
+    border-radius: 9px;
+    background: var(--fill-soft);
+    transition: border-color .15s, opacity .15s;
+}
+
+.mn-eq:hover { border-color: var(--blue-2); }
+
+.mn-eq--run { border-left-color: var(--green); background: #e8f9ee; }
+.mn-eq--wait { border-left-color: var(--amber); background: #fdf4dc; }
+.mn-eq--stop { border-left-color: var(--red); background: #fde8e8; }
+
+.mn-eq--run:hover { border-left-color: var(--green); }
+.mn-eq--wait:hover { border-left-color: var(--amber); }
+.mn-eq--stop:hover { border-left-color: var(--red); }
+
+.mn-eq__photo {
+    height: 38px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 7px;
+    background: repeating-linear-gradient(135deg, #f8fafc 0 7px, #eaf0f6 7px 14px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+}
+
+.mn-eq__photo svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+
+.mn-eq__name { font-size: 11.5px; font-weight: 600; line-height: 1.3; }
+
+body[data-filter] .mn-eq { opacity: .25; }
+body[data-filter="run"] .mn-eq--run,
+body[data-filter="wait"] .mn-eq--wait,
+body[data-filter="stop"] .mn-eq--stop { opacity: 1; }
+
+/* ==================== ПОСЛЕДНИЙ АВАРИЙНЫЙ ПРОСТОЙ ==================== */
+
+.mn-alarm {
+    margin: 0 14px 12px;
+    padding: 8px 11px;
+    border: 1px solid #f5dcdc;
+    border-radius: 10px;
+    background: #fef7f7;
+    box-shadow: inset 3px 0 0 var(--red);
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.mn-alarm:hover { background: #fdeeee; }
+
+.mn-alarm__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.mn-alarm__free {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.mn-alarm__eq { font-size: 11.5px; font-weight: 800; margin-top: 5px; line-height: 1.3; }
+
+.mn-alarm__reason { font-size: 10.5px; color: var(--muted); font-weight: 500; line-height: 1.3; margin-top: 1px; }
+
+.mn-alarm__meta {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ink);
+    margin-top: 5px;
+    font-variant-numeric: tabular-nums;
+}
+
+.mn-alarm__meta span { color: var(--muted); font-weight: 600; }
+
+.mn-alarm__empty { font-size: 11px; color: var(--muted); font-weight: 600; padding: 2px 0; }
+
+/* ==================== ЗАГЛУШКА УЧАСТКА ==================== */
+
+.mn-area--stub .mn-area__list { align-items: center; justify-content: center; }
+.mn-area__stub-msg { margin: auto; padding: 30px 16px; text-align: center; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.mn-area__stub-msg i { display: block; font-size: 22px; margin-bottom: 8px; color: #cbd5e1; }
+
+.mn-loading, .mn-error {
+    padding: 30px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.mn-error { color: var(--red); }
+
+/* ==================== МОДАЛКА ИСТОРИИ ПРОСТОЕВ ==================== */
+
+.mn-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, .5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.mn-modal.is-open { display: flex; }
+
+.mn-modal__card {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(15,23,42,.25);
+    width: min(1100px, 100%);
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mn-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.mn-modal__header h2 { margin: 0; font-size: 16px; font-weight: 800; }
+
+.mn-modal__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.mn-modal__date-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--fill-soft);
+    color: var(--muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    transition: border-color .15s;
+}
+
+.mn-modal__date-label:focus-within { border-color: var(--blue-2); }
+
+.mn-modal__date-label i { font-size: 12px; flex-shrink: 0; }
+
+.mn-modal__date-label input[type="date"] {
+    border: none;
+    background: transparent;
+    padding: 0;
+    width: 108px;
+    font-family: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink);
+    outline: none;
+    cursor: pointer;
+}
+
+.mn-modal__date-label input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(58%) sepia(8%) saturate(487%) hue-rotate(176deg) brightness(94%) contrast(87%);
+    cursor: pointer;
+}
+
+.mn-modal__date-clear {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    background: var(--fill-soft);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+}
+
+.mn-modal__date-clear.is-visible { display: flex; }
+.mn-modal__date-clear:hover { border-color: var(--red); color: var(--red); }
+
+.mn-modal__close {
+    border: none;
+    background: var(--fill-soft);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    font-size: 18px;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.mn-modal__close:hover { color: var(--ink); }
+
+.mn-modal__body { overflow-y: auto; padding: 0; }
+
+.mn-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mn-table th {
+    position: sticky;
+    top: 0;
+    background: var(--fill-soft);
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 700;
+    color: var(--muted);
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+}
+.mn-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+.mn-table tr:hover td { background: var(--fill-soft); }
+
+.mn-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #e0f2fe;
+    color: var(--blue);
+    font-weight: 700;
+    font-size: 11px;
+}
+
+.mn-period { display: flex; flex-direction: column; gap: 6px; white-space: nowrap; }
+.mn-period__row { display: flex; align-items: center; gap: 8px; }
+.mn-period__mark { width: 9px; height: 9px; flex-shrink: 0; }
+.mn-period__mark--start {
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--green);
+}
+.mn-period__mark--end { background: var(--red); border-radius: 2px; }
+
+@media (max-width: 1200px) {
+    body { overflow: auto; }
+    .mn-wrap { height: auto; }
+    .mn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mn-area__list { overflow: visible; }
+}
+
+@media (max-width: 700px) {
+    .mn-grid { grid-template-columns: 1fr; }
+    .mn-clock { margin-left: 0; text-align: left; }
+}

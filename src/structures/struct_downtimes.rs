@@ -32,6 +32,34 @@ pub struct DepartmentName {
 pub struct DataTypes {
     pub id: Option<String>,
     pub name: Option<String>,
+    pub is_emergency: Option<bool>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EquipmentStatus {
+    pub EquipmentID: Option<String>,
+    pub EquipmentName: Option<String>,
+    pub Status: Option<String>, // "run" | "wait" | "stop"
+    pub DowntimeTypeName: Option<String>,
+    pub StartDateTime: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LastEmergencyDowntime {
+    pub EquipmentName: Option<String>,
+    pub DowntimeTypeName: Option<String>,
+    pub Comment: Option<String>,
+    pub StartDateTime: Option<String>,
+    pub EndDateTime: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AreaMonitoring {
+    pub Equipment: Vec<EquipmentStatus>,
+    pub LastEmergency: Option<LastEmergencyDowntime>,
 }
 
 #[allow(non_snake_case)]

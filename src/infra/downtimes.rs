@@ -10,7 +10,7 @@ use serde_json::Value;
 use crate::structures::struct_pool_client::AppState;
 
 use crate::areas::find_area;
-use crate::infra::struct_template::DowntimesTemplate;
+use crate::infra::struct_template::{DowntimesTemplate, MonitoringTemplate};
 use actix_web::{HttpResponse, Responder, get, post, web};
 use askama::Template;
 
@@ -32,6 +32,25 @@ async fn render_downtimes_page(
         area.slug,
         area.department_id,
     );
+
+    match template.render() {
+        Ok(html) => HttpResponse::Ok()
+            .content_type("text/html; charset=utf-8")
+            .body(html),
+
+        Err(error) => {
+            eprintln!("Ошибка отображения страницы: {}", error);
+
+            HttpResponse::InternalServerError()
+                .body("Ошибка отображения страницы")
+        }
+    }
+}
+
+// ________________________________________________________________________________
+#[get("/monitoring")]
+async fn render_monitoring_page() -> impl Responder {
+    let template = MonitoringTemplate::new();
 
     match template.render() {
         Ok(html) => HttpResponse::Ok()
@@ -325,6 +344,36 @@ async fn get_last_downtimes(
             HttpResponse::BadGateway().json(
                 serde_json::json!({
                     "error": "ТОИР не отвечает"
+                }),
+            )
+        }
+    }
+}
+
+#[get("/api/{area}/monitoring")]
+async fn get_area_monitoring(
+    pool: web::Data<AppState>,
+    path: web::Path<String>,
+) -> impl Responder {
+    let area_slug = path.into_inner();
+
+    let Some(area) = db::find_monitoring_area(&area_slug) else {
+        return HttpResponse::BadRequest().json(
+            serde_json::json!({
+                "error": "Неизвестный участок"
+            }),
+        );
+    };
+
+    match db::get_area_monitoring(&pool, area).await {
+        Ok(data) => HttpResponse::Ok().json(data),
+
+        Err(error) => {
+            eprintln!("Ошибка получения статуса участка: {}", error);
+
+            HttpResponse::InternalServerError().json(
+                serde_json::json!({
+                    "error": "Ошибка получения статуса участка"
                 }),
             )
         }
@@ -1344,8 +1393,10 @@ async fn get_version_from_toir(
 
 pub fn conf_downtimes(cfg: &mut web::ServiceConfig) {
     cfg.service(render_downtimes_page);
+    cfg.service(render_monitoring_page);
     cfg.service(get_last_downtimes);
     cfg.service(filter_downtimes);
+    cfg.service(get_area_monitoring);
     cfg.service(get_equipment);
     cfg.service(get_name_worker);
     cfg.service(get_downtime_types);
