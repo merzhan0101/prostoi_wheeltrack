@@ -1310,6 +1310,228 @@ async fn filter_downtimes(
     }
 }
 
+#[get("/api/monitoring/{area}/downtimes")]
+async fn get_monitoring_downtimes(
+    pool: web::Data<AppState>,
+    path: web::Path<String>,
+) -> impl Responder {
+    let area_slug = path.into_inner();
+
+    let Some(area) = db::find_monitoring_area(&area_slug) else {
+        return HttpResponse::BadRequest().json(
+            serde_json::json!({
+                "error": "Неизвестный участок"
+            }),
+        );
+    };
+
+    let client_http = match Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+    {
+        Ok(client) => client,
+
+        Err(error) => {
+            eprintln!(
+                "Ошибка создания HTTP-клиента: {}",
+                error
+            );
+
+            return HttpResponse::InternalServerError().json(
+                serde_json::json!({
+                    "error": "Ошибка создания HTTP-клиента"
+                }),
+            );
+        }
+    };
+
+    let mut request = strdn::GetDowntimesRequest::default();
+
+    request.Filter_DepartmentID = Some(area.department_id.to_string());
+    request.WithEAMDowntimes = Some(1);
+    request.ShowDeleted = Some(0);
+    request.MaxRows = Some(50);
+    request.Offset = Some(0);
+
+    let post_res = client_http
+        .post(format!("{}/get_downtime_list", pool.toir_url))
+        .basic_auth(&pool.toir_login, Some(&pool.toir_password))
+        .json(&request)
+        .send()
+        .await;
+
+    match post_res {
+        Ok(response) => {
+            if !response.status().is_success() {
+                eprintln!("ТОИР вернул статус: {}", response.status());
+
+                return HttpResponse::BadGateway().json(
+                    serde_json::json!({
+                        "error": "Ошибка внешнего сервиса"
+                    }),
+                );
+            }
+
+            match response.json::<Value>().await {
+                Ok(json) => {
+                    match db::get_downtimes_vec_jsonn_by_equipment(
+                        &pool,
+                        json,
+                        area.equipment_ids,
+                    )
+                    .await
+                    {
+                        Ok(data) => HttpResponse::Ok().json(data),
+
+                        Err(error) => {
+                            eprintln!("Ошибка обработки простоев: {}", error);
+
+                            HttpResponse::InternalServerError().json(
+                                serde_json::json!({
+                                    "error": "Ошибка обработки данных"
+                                }),
+                            )
+                        }
+                    }
+                }
+
+                Err(error) => {
+                    eprintln!("Ошибка парсинга JSON ТОИР: {}", error);
+
+                    HttpResponse::BadGateway().json(
+                        serde_json::json!({
+                            "error": "Некорректный ответ ТОИР"
+                        }),
+                    )
+                }
+            }
+        }
+
+        Err(error) => {
+            eprintln!("Ошибка подключения к ТОИР: {}", error);
+
+            HttpResponse::BadGateway().json(
+                serde_json::json!({
+                    "error": "ТОИР не отвечает"
+                }),
+            )
+        }
+    }
+}
+
+#[post("/api/monitoring/{area}/downtimes/filter")]
+async fn filter_monitoring_downtimes(
+    pool: web::Data<AppState>,
+    path: web::Path<String>,
+    body: web::Json<strdn::GetDowntimesRequest>,
+) -> impl Responder {
+    let area_slug = path.into_inner();
+
+    let Some(area) = db::find_monitoring_area(&area_slug) else {
+        return HttpResponse::BadRequest().json(
+            serde_json::json!({
+                "error": "Неизвестный участок"
+            }),
+        );
+    };
+
+    let mut filter = body.into_inner();
+
+    filter.Filter_DepartmentID = Some(area.department_id.to_string());
+    filter.WithEAMDowntimes = Some(1);
+    filter.ShowDeleted = Some(0);
+    filter.MaxRows = Some(50);
+
+    if filter.Offset.is_none() {
+        filter.Offset = Some(0);
+    }
+
+    let client_http = match Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+    {
+        Ok(client) => client,
+
+        Err(error) => {
+            eprintln!(
+                "Ошибка создания HTTP-клиента: {}",
+                error
+            );
+
+            return HttpResponse::InternalServerError().json(
+                serde_json::json!({
+                    "error": "Ошибка создания HTTP-клиента"
+                }),
+            );
+        }
+    };
+
+    let post_res = client_http
+        .post(format!("{}/get_downtime_list", pool.toir_url))
+        .basic_auth(&pool.toir_login, Some(&pool.toir_password))
+        .json(&filter)
+        .send()
+        .await;
+
+    match post_res {
+        Ok(response) => {
+            if !response.status().is_success() {
+                eprintln!("ТОИР вернул статус: {}", response.status());
+
+                return HttpResponse::BadGateway().json(
+                    serde_json::json!({
+                        "error": "Ошибка внешнего сервиса"
+                    }),
+                );
+            }
+
+            match response.json::<Value>().await {
+                Ok(json) => {
+                    match db::get_downtimes_vec_jsonn_by_equipment(
+                        &pool,
+                        json,
+                        area.equipment_ids,
+                    )
+                    .await
+                    {
+                        Ok(data) => HttpResponse::Ok().json(data),
+
+                        Err(error) => {
+                            eprintln!("Ошибка обработки простоев: {}", error);
+
+                            HttpResponse::InternalServerError().json(
+                                serde_json::json!({
+                                    "error": "Ошибка обработки данных"
+                                }),
+                            )
+                        }
+                    }
+                }
+
+                Err(error) => {
+                    eprintln!("Ошибка парсинга JSON ТОИР: {}", error);
+
+                    HttpResponse::BadGateway().json(
+                        serde_json::json!({
+                            "error": "Некорректный ответ ТОИР"
+                        }),
+                    )
+                }
+            }
+        }
+
+        Err(error) => {
+            eprintln!("Ошибка подключения к ТОИР: {}", error);
+
+            HttpResponse::BadGateway().json(
+                serde_json::json!({
+                    "error": "ТОИР не отвечает"
+                }),
+            )
+        }
+    }
+}
+
 // для сортировки оборудования по буквам
 #[get("/api/departments")]
 async fn get_departments(
@@ -1397,6 +1619,8 @@ pub fn conf_downtimes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_last_downtimes);
     cfg.service(filter_downtimes);
     cfg.service(get_area_monitoring);
+    cfg.service(get_monitoring_downtimes);
+    cfg.service(filter_monitoring_downtimes);
     cfg.service(get_equipment);
     cfg.service(get_name_worker);
     cfg.service(get_downtime_types);

@@ -8,13 +8,12 @@ const STATUS = {
 
 const REFRESH_INTERVAL_MS = 60000;
 
-// Только Заготовительный участок подключён к реальным данным.
-// Остальные три показаны как заглушки, пока для них не появится API.
+// Все 4 участка подключены к реальным данным.
 const AREAS = [
     { slug: 'workpiece', name: 'Заготовительный участок',     connected: true },
-    { slug: 'ring_oven',  name: 'Кольцевая печь',              connected: false },
-    { slug: 'rolling',   name: 'Прессо-прокатный участок',    connected: false },
-    { slug: 'thermal_section', name: 'Термоучасток',          connected: false }
+    { slug: 'ring_oven',  name: 'Кольцевая печь',              connected: true },
+    { slug: 'rolling',   name: 'Прессо-прокатный участок',    connected: true },
+    { slug: 'thermal_section', name: 'Термоучасток',          connected: true }
 ];
 
 const pad = n => String(n).padStart(2, '0');
@@ -69,7 +68,7 @@ function equipmentMarkup(eq) {
 
 function alarmMarkup(areaSlug, alarm) {
     if (!alarm) {
-        return `<div class="mn-alarm"><p class="lbl">Последний аварийный простой</p><div class="mn-alarm__empty">Аварийных простоев не зафиксировано</div></div>`;
+        return `<div class="mn-alarm" data-area="${areaSlug}"><p class="lbl">Последний аварийный простой</p><div class="mn-alarm__empty">Аварийных простоев не зафиксировано</div></div>`;
     }
 
     const start = parseSqlDate(alarm.StartDateTime);
@@ -240,7 +239,7 @@ async function loadHistory(areaSlug, dateVal = null) {
         if (dateVal) {
             const dateForToir = dateVal.replaceAll('-', '');
 
-            response = await fetch(`/api/${areaSlug}/downtimes/filter`, {
+            response = await fetch(`/api/monitoring/${areaSlug}/downtimes/filter`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -253,7 +252,7 @@ async function loadHistory(areaSlug, dateVal = null) {
                 })
             });
         } else {
-            response = await fetch(`/api/${areaSlug}/downtimes`);
+            response = await fetch(`/api/monitoring/${areaSlug}/downtimes`);
         }
 
         if (!response.ok) {

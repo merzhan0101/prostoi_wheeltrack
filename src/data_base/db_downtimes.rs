@@ -171,6 +171,7 @@ pub async fn get_types(pool: &AppState) -> Result<Vec<dsr::DataTypes>> {
 pub struct MonitoringArea {
     pub slug: &'static str,
     pub name: &'static str,
+    pub department_id: &'static str,
     pub equipment_ids: &'static [&'static str],
 }
 
@@ -178,6 +179,7 @@ pub const MONITORING_AREAS: &[MonitoringArea] = &[
     MonitoringArea {
         slug: "workpiece",
         name: "Заготовительный участок",
+        department_id: "92b138d1-c131-11ed-8163-00155d16fe68",
         equipment_ids: &[
             "00ba56a9-be27-11ed-8163-00155d16fe68", // Стенд осмотра заготовок (штанг)
             "2189f58a-be27-11ed-8163-00155d16fe68", // Тележка г/п 20 т №1
@@ -193,6 +195,7 @@ pub const MONITORING_AREAS: &[MonitoringArea] = &[
     MonitoringArea {
         slug: "ring_oven",
         name: "Кольцевая печь",
+        department_id: "92b138cb-c131-11ed-8163-00155d16fe68",
         equipment_ids: &[
             "c0489326-cd25-11ed-8163-00155d16fe68", // Кольцевая печь
             "5930bdc5-cd1e-11ed-8163-00155d16fe68", // Транспортная система подачи и выдачи заготовок Krei-ma
@@ -202,6 +205,7 @@ pub const MONITORING_AREAS: &[MonitoringArea] = &[
     MonitoringArea {
         slug: "thermal_section",
         name: "Термоучасток",
+        department_id: "92b138cb-c131-11ed-8163-00155d16fe68",
         equipment_ids: &[
             "bce3b454-ce17-11ed-8163-00155d16fe68", // Портальный манипулятор GLAMA D1
             "9eac762f-cd44-11ed-8163-00155d16fe68", // Транспортная система линии термообработки Krei-ma
@@ -220,6 +224,7 @@ pub const MONITORING_AREAS: &[MonitoringArea] = &[
     MonitoringArea {
         slug: "rolling",
         name: "Прессо-прокатный участок",
+        department_id: "92b138d4-c131-11ed-8163-00155d16fe68",
         equipment_ids: &[
             "9dcbed00-c14a-11ed-8163-00155d16fe68", // Установка для удаления окалины SGGT
             "13d77b55-c172-11ed-8163-00155d16fe68", // Пресс МН-10000 Schuler
@@ -640,6 +645,114 @@ pub async fn get_downtimes_vec_jsonn(
             item.get("DepartmentID")
                 .and_then(|v| v.as_str())
                 // .map(String::from)
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+        data.StartDateTime = item
+            .get("StartDateTime")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        data.EndDateTime = item
+            .get("EndDateTime")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        data.Duration = item
+            .get("Duration")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        data.DowntimeTypeName = sh::dtypes(
+            &mut client,
+            item.get("DowntimeTypeID").and_then(|v| v.as_str()).unwrap(),
+        )
+        .await
+        .unwrap_or(None);
+
+        data.Author = item
+            .get("Author")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        data.Comment = item
+            .get("Comment")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        data.Deleted = item
+            .get("Deleted")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32);
+
+        data_send.push(data.clone());
+    }
+
+    Ok(data_send)
+}
+
+pub async fn get_downtimes_vec_jsonn_by_equipment(
+    pool: &AppState,
+    json: Value,
+    equipment_ids: &[&str],
+) -> Result<Vec<dsr::DowntimesRefactor>> {
+    let mut client = pool.pool_raport.get().await?;
+
+    let data_array = json
+        .get("Data")
+        .and_then(|v| v.as_array())
+        .ok_or("Поле 'Data' отсутствует или не является массивом")
+        .unwrap();
+
+    let mut data = dsr::DowntimesRefactor::default();
+
+    let mut data_send: Vec<dsr::DowntimesRefactor> = Vec::new();
+
+    for item in data_array {
+        let item_equipment_id = item
+            .get("EquipmentID")
+            .and_then(|value| value.as_str())
+            .unwrap_or("");
+
+        // Пропускаем простои оборудования, не относящегося к этому
+        // логическому участку мониторинга.
+        if !equipment_ids
+            .iter()
+            .any(|id| id.eq_ignore_ascii_case(item_equipment_id))
+        {
+            continue;
+        }
+
+        data.EAMID = item
+            .get("EAMID")
+            .and_then(|value| value.as_str())
+            .map(String::from);
+
+        data.EAMDocName = item
+            .get("EAMDocName")
+            .and_then(|v| v.as_str())
+            .map(String::from);
+
+        data.EAMDowntime = item
+            .get("EAMDowntime")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32);
+
+        data.EquipmentName = sh::equip(
+            &mut client,
+            item.get("EquipmentID")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+        data.DepartmentName = sh::depart(
+            &mut client,
+            item.get("DepartmentID")
+                .and_then(|v| v.as_str())
                 .unwrap(),
         )
         .await
