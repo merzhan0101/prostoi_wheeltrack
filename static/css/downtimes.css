@@ -1152,7 +1152,6 @@ footer {
     font-family: 'Montserrat', sans-serif;
 }
 
-/* test */
 .selected-equipments {
     display: flex;
     flex-wrap: wrap;
@@ -1178,7 +1177,6 @@ footer {
     cursor: pointer;
 }
 
-/* test */
 .custom-toast {
     position: fixed;
     top: 30px;
