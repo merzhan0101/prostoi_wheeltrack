@@ -98,6 +98,7 @@ struct DowntimeItem {
 pub struct GetDowntime {
     pub EAMID: Option<String>,
     pub EAMDocName: Option<String>,
+    pub EAMVersion: Option<String>,  
     pub EAMDowntime: Option<i32>,
     pub EquipmentID: Option<String>,
     pub EquipmentName: Option<String>,
@@ -106,6 +107,7 @@ pub struct GetDowntime {
     pub EndDateTime: Option<String>,
     pub Duration: Option<i32>,
     pub DowntimeTypeID: Option<String>,
+    pub DowntimeTypeName: Option<String>, 
     pub Comment: Option<String>,
     pub Author: Option<String>,
     pub Posted: Option<i32>,
@@ -132,16 +134,3 @@ pub struct UpdateData {
     pub Author: Option<String>,
     pub Area: Option<String>,  // Добавляем Area
 }
-
-// #[allow(non_snake_case)]
-// #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-// pub struct UpdateData {
-//     pub EAMVersion: Option<String>,
-//     pub EAMID: Option<String>,
-//     pub EquipmentID: Option<String>,
-//     pub StartDateTime: Option<String>,
-//     pub EndDateTime: Option<String>,
-//     pub DowntimeTypeID: Option<String>,
-//     pub Comment: Option<String>,
-//     pub Author: Option<String>,
-// }

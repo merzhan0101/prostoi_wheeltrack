@@ -370,44 +370,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (item && item.dataset.id) {
 
-                /*const typeText = document
-                    .getElementById('modal-type')
-                    .selectedOptions[0]
-                    ?.textContent
-                    ?.trim();
-
-                const combinedTypes = [
-                    'Комбинированный отказ',
-                    'Ожидание смежного участка',
-                    'Калибровка'
-                ];
-
-                const isCombined = combinedTypes.includes(typeText);
-
-                if (isCombined) {
-                    const exists = selectedEquipments.some(x => x.id === item.dataset.id);
-
-                    if (!exists) {
-                        selectedEquipments.push({
-                            id: item.dataset.id,
-                            name: item.textContent.trim()
-                        });
-                    }
-
-                    eqSearchInput.value = '';
-                    eqHiddenId.value = '';
-                    renderSelectedEquipments();
-                } else {
-                    selectedEquipments = [{
-                        id: item.dataset.id,
-                        name: item.textContent.trim()
-                    }];
-
-                    eqSearchInput.value = item.textContent.trim();
-                    eqHiddenId.value = item.dataset.id;
-                    renderSelectedEquipments();
-                }*/
-
                 const exists = selectedEquipments.some(
                     x => x.id === item.dataset.id
                 );
@@ -919,6 +881,8 @@ document.addEventListener('DOMContentLoaded', function () {
         Comment: document.getElementById('edit-comment').value
     };
 
+    console.log('payload:', JSON.stringify(payload, null, 2));
+
     try {
         const response = await fetch('/api/update_downtime', {
             method: 'POST',
@@ -928,7 +892,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Получаем ответ как текст сначала для диагностики
         const responseText = await response.text();
-        // console.log('Ответ от сервера:', responseText);
+        console.log('Ответ от сервера:', responseText);
         
         // Парсим JSON
         let result;
@@ -954,38 +918,6 @@ document.addEventListener('DOMContentLoaded', function () {
         alert('❌ Сетевая ошибка при сохранении. Проверьте подключение к серверу.');
     }
 };
-
-    /*document.getElementById('editForm').onsubmit = async (e) => {
-        e.preventDefault();
-        const payload = {
-            EAMID: document.getElementById('edit-entry-id').value,
-            EquipmentID: document.getElementById('edit-equipment-id').value,
-            StartDateTime: formatToEAMDate(document.getElementById('edit-start').value),
-            EndDateTime: formatToEAMDate(document.getElementById('edit-end').value),
-            DowntimeTypeID: document.getElementById('edit-type').value,
-            Author: document.getElementById('edit-worker-search').value,
-            Comment: document.getElementById('edit-comment').value
-        };
-
-        try {
-            // console.log(payload);
-            const response = await fetch('/api/update_downtime', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const result = await response.json();
-            if (result.Posted === 1) {
-               showToast("Простой успешно обновлён");
-
-                setTimeout(() => {
-                    location.reload();
-                }, 1200);
-            } else {
-                alert('Ошибка: ' + result.ErrorMessage);
-            }
-        } catch (err) { alert('Ошибка сохранения'); }
-    };*/
 });
 
 // --- ЗАГРУЗКА ДАННЫХ В ТАБЛИЦУ ---

@@ -11,4 +11,5 @@ pub struct AppState {
     pub toir_url: String,
     pub toir_login: String,
     pub toir_password: String,
+    pub local_mode: bool,
 }

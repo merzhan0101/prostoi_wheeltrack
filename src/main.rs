@@ -43,6 +43,14 @@ async fn main() -> std::io::Result<()> {
     let toir_login = env::var("TOIR_LOGIN").expect("TOIR_LOGIN not found");
     let toir_password = env::var("TOIR_PASSWORD").expect("TOIR_PASSWORD not found");
 
+    // Читаем режим локальной работы
+    let local_mode = env::var("LOCAL_MODE")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse::<bool>()
+        .unwrap_or(false);
+    
+    println!("Режим работы: {}", if local_mode { "ЛОКАЛЬНЫЙ (без ТОИР)" } else { "ОБЫЧНЫЙ (с ТОИР)" });
+
     let pool_wt = create_pool("CONNECTION_STRING").await?;
     let pool_raport = create_pool("CONNECTION_RAPORT").await?;
 
@@ -53,6 +61,8 @@ async fn main() -> std::io::Result<()> {
         toir_url,
         toir_login,
         toir_password,
+
+        local_mode,
     };
 
     let data_state = web::Data::new(app_state);

@@ -189,10 +189,24 @@ pub async fn has_active_downtime(
     Ok(false)
 }
 
+// LOCAL
 pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> Result<()> {
     let mut client = pool.pool_raport.get().await?;
 
-    // println!("result_http: {:#?}", result_http);
+    // =========================================================
+    // В ЛОКАЛЬНОМ РЕЖИМЕ ОТКЛЮЧАЕМ FOREIGN KEY
+    // =========================================================
+    let is_local_mode = body.get("_local_mode").and_then(|v| v.as_bool()).unwrap_or(false);
+    
+    if is_local_mode {
+        // Отключаем FOREIGN KEY
+        let disable_query = "ALTER TABLE Downtimes NOCHECK CONSTRAINT FK_Downtimes_Equip";
+        if let Err(e) = client.execute(disable_query, &[]).await {
+            eprintln!("⚠️ Не удалось отключить FOREIGN KEY: {}", e);
+        } else {
+            // println!("🔓 FOREIGN KEY отключена для локального сохранения");
+        }
+    }
 
     let eam_version = result_http
         .get("EAMVersion")
@@ -213,15 +227,23 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
         .unwrap_or("")
         .to_string();
 
-    let dt = NaiveDateTime::parse_from_str(
-        &body
-            .get("StartDateTime")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string(),
-        "%Y%m%d%H%M%S",
-    )
-    .unwrap();
+    // Парсим даты
+    let start_date_str = body
+        .get("StartDateTime")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    
+    let dt = if !start_date_str.is_empty() {
+        match NaiveDateTime::parse_from_str(start_date_str, "%Y%m%d%H%M%S") {
+            Ok(dt) => dt,
+            Err(e) => {
+                eprintln!("❌ Ошибка парсинга StartDateTime '{}': {}", start_date_str, e);
+                chrono::Local::now().naive_local()
+            }
+        }
+    } else {
+        chrono::Local::now().naive_local()
+    };
 
     let dt1 = body
         .get("EndDateTime")
@@ -229,14 +251,29 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
         .filter(|s| !s.is_empty())
         .and_then(|s| NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M%S").ok());
 
-    // let bin_id = hex::decode(&eam_id).unwrap_or_default();
-
-    let equipment_id_bin = body
+    // Получаем EquipmentID
+    let equipment_id = body
         .get("EquipmentID")
         .and_then(|v| v.as_str())
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .map(|u| u.into_bytes().to_vec())
-        .unwrap_or_default();
+        .unwrap_or("");
+
+    let equipment_id_bin = if !equipment_id.is_empty() {
+        match Uuid::parse_str(equipment_id) {
+            Ok(uuid) => uuid.into_bytes().to_vec(),
+            Err(e) => {
+                eprintln!("❌ Ошибка парсинга EquipmentID '{}': {}", equipment_id, e);
+                Vec::new()
+            }
+        }
+    } else {
+        Vec::new()
+    };
+
+    // Получаем DepartmentID
+    let department_id = body
+        .get("DepartmentID")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
 
     let downtime_id_bin = body
         .get("DowntimeTypeID")
@@ -250,17 +287,28 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
         .and_then(|v| v.as_str())
         .map_or(true, |s| s.is_empty());
 
-    let department_id_bin: Option<Vec<u8>> = body
-        .get("DepartmentID")
+    let department_id_bin: Option<Vec<u8>> = if !department_id.is_empty() {
+        match Uuid::parse_str(department_id) {
+            Ok(uuid) => Some(uuid.into_bytes().to_vec()),
+            Err(_) => None
+        }
+    } else {
+        None
+    };
+
+    let author = body
+        .get("Author")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    
+    let comment = body
+        .get("Comment")
         .and_then(|v| v.as_str())
         .filter(|s| !s.is_empty())
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .map(|u| u.into_bytes().to_vec());
+        .map(|s| s.to_string());
 
-    // println!("BIN ID IS: {:#?}", bin_id);
-
-    if is_empty {
-
+    let result = if is_empty {
         let insert = "
             INSERT INTO Downtimes 
             (Id, EquipmentID, DepartmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion)
@@ -277,25 +325,14 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
                     &downtime_id_bin,
                     &dt,
                     &dt1,
-                    &body
-                        .get("Author")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string(),
-                    &body
-                        .get("Comment")
-                        .and_then(|v| v.as_str())
-                        .filter(|s| !s.is_empty())
-                        .map(|s| s.to_string()),
+                    &author,
+                    &comment,
                     &eam_doc,
                     &eam_version,
                 ],
             )
             .await
-            .unwrap();
     } else {
-        // let update = "UPDATE Downtimes SET EquipmentID=@P1, DepartmentID=@P2, DowntimeTypeID=@P3, StartDateTime=@P4, EndDateTime=@P5, Author=@P6, Comment=@P7 WHERE Id=@P8";
-
         let update = "
             UPDATE Downtimes
             SET
@@ -313,29 +350,39 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
             .execute(
                 update,
                 &[
-                            &equipment_id_bin,      // @P1
-                            &department_id_bin,     // @P2
-                            &downtime_id_bin,       // @P3
-                            &dt,                    // @P4
-                            &dt1,                   // @P5
-                            &body
-                                .get("Author")
-                                .and_then(|v| v.as_str())
-                                .unwrap_or("")
-                                .to_string(),       // @P6
-                            &body
-                                .get("Comment")
-                                .and_then(|v| v.as_str())
-                                .filter(|s| !s.is_empty())
-                                .map(|s| s.to_string()), // @P7
-                            &bin_id,                // @P8
-                        ]
+                    &equipment_id_bin,
+                    &department_id_bin,
+                    &downtime_id_bin,
+                    &dt,
+                    &dt1,
+                    &author,
+                    &comment,
+                    &bin_id,
+                ],
             )
             .await
-            .unwrap();
+    };
+
+    // Включаем FOREIGN KEY обратно
+    if is_local_mode {
+        let enable_query = "ALTER TABLE Downtimes CHECK CONSTRAINT FK_Downtimes_Equip";
+        if let Err(e) = client.execute(enable_query, &[]).await {
+            eprintln!("⚠️ Не удалось включить FOREIGN KEY: {}", e);
+        } else {
+            // println!("🔒 FOREIGN KEY включена обратно");
+        }
     }
 
-    Ok(())
+    match result {
+        Ok(_) => {
+            // println!("✅ Запись успешно сохранена в БД");
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("❌ Ошибка вставки/обновления в БД: {}", e);
+            Err(anyhow::anyhow!("Ошибка БД: {}", e))
+        }
+    }
 }
 
 // ____________________________________________________________________________________
@@ -528,63 +575,6 @@ pub async fn get_data_downtime(
     Ok(data_toir)
 }
 
-/*pub async fn data_update(pool: &AppState, body: Value) -> Result<dsr::UpdateData> {
-    let mut client = pool.pool_raport.get().await?;
-    let mut data = dsr::UpdateData::default();
-
-    data.EAMID = body.get("EAMID").and_then(|v| v.as_str()).map(String::from);
-
-    let bin_id = body
-        .get("EAMID")
-        .and_then(|v| v.as_str())
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .map(|u| u.into_bytes().to_vec())
-        .unwrap_or_default();
-
-    let mut select_version = Query::new("SELECT TOP 1 EAMVersion FROM Downtimes WHERE Id=@P1");
-    select_version.bind(bin_id);
-
-    {
-        let mut stream = select_version.query(&mut client).await?;
-        while let Some(row) = stream.try_next().await? {
-            if let QueryItem::Row(r) = row {
-                data.EAMVersion = r.get(0).map(|s: &str| s.to_string());
-            }
-        }
-    }
-
-    /*data.EAMVersion = body
-        .get("EAMVersion")
-        .and_then(|v| v.as_str())
-        .map(String::from);*/
-    data.EquipmentID = body
-        .get("EquipmentID")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    data.DowntimeTypeID = body
-        .get("DowntimeTypeID")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    data.StartDateTime = body
-        .get("StartDateTime")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    data.EndDateTime = body
-        .get("EndDateTime")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    data.Author = body
-        .get("Author")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-    data.Comment = body
-        .get("Comment")
-        .and_then(|v| v.as_str())
-        .map(String::from);
-
-    Ok(data)
-}*/
-
 pub async fn data_update(pool: &AppState, body: Value) -> Result<dsr::UpdateData> {
     let mut client = pool.pool_raport.get().await?;
     let mut data = dsr::UpdateData::default();
@@ -666,3 +656,180 @@ pub async fn get_name_department(
     Ok(data_result)
 }
 
+pub async fn get_downtime_local(
+    pool: &AppState,
+    eamid: &str,
+) -> Result<dsr::GetDowntime> {
+    let mut client = pool.pool_raport.get().await?;
+
+    let bin_id = Uuid::parse_str(eamid)?
+        .into_bytes()
+        .to_vec();
+
+    let query = "
+        SELECT 
+            d.Id as EAMID,
+            d.EAMDocName,
+            d.EAMVersion,
+            d.EquipmentID,
+            e.Name as EquipmentName,
+            d.DepartmentID,
+            dep.Name as DepartmentName,
+            d.StartDateTime,
+            d.EndDateTime,
+            dt.Name as DowntimeTypeName,
+            d.DowntimeTypeID,
+            d.Author,
+            d.Comment
+        FROM Downtimes d
+        LEFT JOIN DTEquipments e ON d.EquipmentID = e.Id
+        LEFT JOIN DTDepartments dep ON d.DepartmentID = dep.Id
+        LEFT JOIN DowntimesTypes dt ON d.DowntimeTypeID = dt.Id
+        WHERE d.Id = @P1
+    ";
+
+    let mut stream = client.query(query, &[&bin_id]).await?;
+    let mut data_toir = dsr::GetDowntime::default();
+
+    while let Some(item) = stream.try_next().await? {
+        if let QueryItem::Row(row) = item {
+            // EAMID
+            if let Some(bytes) = row.get::<&[u8], _>("EAMID") {
+                if let Ok(uuid) = Uuid::from_slice(bytes) {
+                    data_toir.EAMID = Some(uuid.to_string());
+                }
+            }
+            
+            data_toir.EAMDocName = row.get("EAMDocName").map(|s: &str| s.to_string());
+            data_toir.EAMVersion = row.get("EAMVersion").map(|s: &str| s.to_string());
+            
+            // EquipmentID
+            if let Some(bytes) = row.get::<&[u8], _>("EquipmentID") {
+                if let Ok(uuid) = Uuid::from_slice(bytes) {
+                    data_toir.EquipmentID = Some(uuid.to_string());
+                }
+            }
+            
+            data_toir.EquipmentName = row.get("EquipmentName").map(|s: &str| s.to_string());
+            
+            // DepartmentID
+            if let Some(bytes) = row.get::<&[u8], _>("DepartmentID") {
+                if let Ok(uuid) = Uuid::from_slice(bytes) {
+                    data_toir.DepartmentID = Some(uuid.to_string());
+                }
+            }
+            
+            // Форматируем даты
+            if let Some(dt) = row.get::<chrono::NaiveDateTime, _>("StartDateTime") {
+                data_toir.StartDateTime = Some(dt.format("%Y%m%d%H%M%S").to_string());
+            }
+            
+            if let Some(dt) = row.get::<chrono::NaiveDateTime, _>("EndDateTime") {
+                data_toir.EndDateTime = Some(dt.format("%Y%m%d%H%M%S").to_string());
+            }
+            
+            // Рассчитываем длительность
+            if let (Some(start), Some(end)) = (
+                row.get::<chrono::NaiveDateTime, _>("StartDateTime"),
+                row.get::<chrono::NaiveDateTime, _>("EndDateTime")
+            ) {
+                let duration = end - start;
+                data_toir.Duration = Some(duration.num_minutes() as i32);
+            }
+            
+            data_toir.DowntimeTypeID = row.get("DowntimeTypeID")
+                .and_then(|bytes: &[u8]| Uuid::from_slice(bytes).ok())
+                .map(|uuid| uuid.to_string());
+            
+            data_toir.DowntimeTypeName = row.get("DowntimeTypeName").map(|s: &str| s.to_string());
+            data_toir.Author = row.get("Author").map(|s: &str| s.to_string());
+            data_toir.Comment = row.get("Comment").map(|s: &str| s.to_string());
+            data_toir.Posted = Some(0); // В локальном режиме всегда 0
+        }
+    }
+
+    Ok(data_toir)
+}
+
+// Добавьте эту функцию в db_downtimes.rs
+pub async fn get_downtimes_local(
+    pool: &AppState,
+    department_id: &str,
+) -> Result<Vec<dsr::DowntimesRefactor>> {
+    let mut client = pool.pool_raport.get().await?;
+
+    let department_bin = Uuid::parse_str(department_id)?
+        .into_bytes()
+        .to_vec();
+
+    let query = "
+        SELECT 
+            d.Id as EAMID,
+            d.EAMDocName,
+            e.Name as EquipmentName,
+            dep.Name as DepartmentName,
+            d.StartDateTime,
+            d.EndDateTime,
+            dt.Name as DowntimeTypeName,
+            d.Author,
+            d.Comment
+        FROM Downtimes d
+        LEFT JOIN DTEquipments e ON d.EquipmentID = e.Id
+        LEFT JOIN DTDepartments dep ON d.DepartmentID = dep.Id
+        LEFT JOIN DowntimesTypes dt ON d.DowntimeTypeID = dt.Id
+        WHERE d.DepartmentID = @P1
+        ORDER BY d.StartDateTime DESC
+        OFFSET 0 ROWS
+        FETCH NEXT 50 ROWS ONLY
+    ";
+
+    let mut result = Vec::new();
+    let mut stream = client.query(query, &[&department_bin]).await?;
+
+    while let Some(item) = stream.try_next().await? {
+        if let QueryItem::Row(row) = item {
+            let mut data = dsr::DowntimesRefactor::default();
+            
+            // EAMID
+            if let Some(bytes) = row.get::<&[u8], _>("EAMID") {
+                if let Ok(uuid) = Uuid::from_slice(bytes) {
+                    data.EAMID = Some(uuid.to_string());
+                }
+            }
+            
+            data.EAMDocName = row.get("EAMDocName").map(|s: &str| s.to_string());
+            data.EquipmentName = row.get("EquipmentName").map(|s: &str| s.to_string());
+            data.DepartmentName = row.get("DepartmentName").map(|s: &str| s.to_string());
+            
+            // Даты
+            if let Some(dt) = row.get::<chrono::NaiveDateTime, _>("StartDateTime") {
+                data.StartDateTime = Some(dt.format("%Y%m%d%H%M%S").to_string());
+            }
+            
+            if let Some(dt) = row.get::<chrono::NaiveDateTime, _>("EndDateTime") {
+                data.EndDateTime = Some(dt.format("%Y%m%d%H%M%S").to_string());
+            }
+            
+            // Длительность
+            if let (Some(start), Some(end)) = (
+                row.get::<chrono::NaiveDateTime, _>("StartDateTime"),
+                row.get::<chrono::NaiveDateTime, _>("EndDateTime")
+            ) {
+                let duration = end - start;
+                let hours = duration.num_hours();
+                let minutes = duration.num_minutes() % 60;
+                data.Duration = Some(format!("{}ч {}м", hours, minutes));
+            }
+            
+            data.DowntimeTypeName = row.get("DowntimeTypeName").map(|s: &str| s.to_string());
+            data.Author = row.get("Author").map(|s: &str| s.to_string());
+            data.Comment = row.get("Comment").map(|s: &str| s.to_string());
+            data.Deleted = Some(0);
+            data.EAMDowntime = None;
+
+            result.push(data);
+        }
+    }
+
+    Ok(result)
+}
