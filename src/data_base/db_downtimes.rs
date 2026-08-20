@@ -769,8 +769,8 @@ pub async fn get_name_department(
                 WHERE Id IN (
                     0x40FE0563C04A11F0A48D00155D011305,
                     0xC3DF935DC16311ED816300155D16FE68,
-                    0xF26321C79D6C11ED816300155D16FE68
-                );"
+                    0x2CB0C7E9604511EE80CB00155D07EA17
+                );" //убрал первый Участок по ремонту оборудования проката - 0xF26321C79D6C11ED816300155D16FE68 (20.08.2026)
     );
     // select.bind(like_query);
 
