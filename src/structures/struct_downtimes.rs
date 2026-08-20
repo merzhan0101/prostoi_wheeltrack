@@ -159,6 +159,7 @@ pub struct UpdateData {
     pub Comment: Option<String>,
     pub Author: Option<String>,
     pub Area: Option<String>,  
+}
 
 // #[allow(non_snake_case)]
 // #[derive(Debug, Clone, Serialize, Deserialize, Default)]
