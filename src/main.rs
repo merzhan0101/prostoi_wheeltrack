@@ -49,7 +49,7 @@ async fn main() -> std::io::Result<()> {
         .parse::<bool>()
         .unwrap_or(false);
     
-    println!("Режим работы: {}", if local_mode { "ЛОКАЛЬНЫЙ (без ТОИР)" } else { "ОБЫЧНЫЙ (с ТОИР)" });
+    // println!("Режим работы: {}", if local_mode { "ЛОКАЛЬНЫЙ (без ТОИР)" } else { "ОБЫЧНЫЙ (с ТОИР)" });
 
     let pool_wt = create_pool("CONNECTION_STRING").await?;
     let pool_raport = create_pool("CONNECTION_RAPORT").await?;

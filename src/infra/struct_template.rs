@@ -25,3 +25,18 @@ impl DowntimesTemplate {
         }
     }
 }
+
+// МОНИТОРИНГ =========================================================================
+#[derive(Template)]
+#[template(path = "areas_monitoring.html")]
+pub struct MonitoringTemplate {
+    pub static_version: &'static str,
+}
+
+impl MonitoringTemplate {
+    pub fn new() -> Self {
+        Self {
+            static_version: BUILD_VERSION,
+        }
+    }
+}

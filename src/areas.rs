@@ -26,6 +26,12 @@ pub const AREAS: &[AreaConfig] = &[
         place_id: 7,
     },
     AreaConfig {
+        slug: "kp",
+        name: "Участок кольцевая печь",
+        department_id: "92b138cb-c131-11ed-8163-00155d16fe68",
+        place_id: 6,
+    },
+    AreaConfig {
         slug: "uppo",
         name: "Участок полнопрофильной обработки КПЦ",
         department_id: "92b138cc-c131-11ed-8163-00155d16fe68",

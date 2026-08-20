@@ -881,7 +881,7 @@ document.addEventListener('DOMContentLoaded', function () {
         Comment: document.getElementById('edit-comment').value
     };
 
-    console.log('payload:', JSON.stringify(payload, null, 2));
+    // console.log('payload:', JSON.stringify(payload, null, 2));
 
     try {
         const response = await fetch('/api/update_downtime', {
@@ -892,7 +892,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Получаем ответ как текст сначала для диагностики
         const responseText = await response.text();
-        console.log('Ответ от сервера:', responseText);
+        // console.log('Ответ от сервера:', responseText);
         
         // Парсим JSON
         let result;

@@ -28,11 +28,41 @@ pub struct DepartmentName {
     pub id: Option<String>,
 }
 
+// __________________________
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DataTypes {
     pub id: Option<String>,
     pub name: Option<String>,
+    pub is_emergency: Option<bool>,
 }
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct EquipmentStatus {
+    pub EquipmentID: Option<String>,
+    pub EquipmentName: Option<String>,
+    pub Status: Option<String>, // "run" | "wait" | "stop"
+    pub DowntimeTypeName: Option<String>,
+    pub StartDateTime: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LastEmergencyDowntime {
+    pub EquipmentName: Option<String>,
+    pub DowntimeTypeName: Option<String>,
+    pub Comment: Option<String>,
+    pub StartDateTime: Option<String>,
+    pub EndDateTime: Option<String>,
+}
+
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AreaMonitoring {
+    pub Equipment: Vec<EquipmentStatus>,
+    pub LastEmergency: Option<LastEmergencyDowntime>,
+}
+// __________________________
 
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -126,11 +156,11 @@ pub struct UpdateData {
     pub EAMID: Option<String>,
     pub EquipmentID: Option<String>,
     pub DepartmentID: Option<String>,
-    pub DepartmentIDs: Option<Vec<String>>,  // Добавляем массив служб
+    pub DepartmentIDs: Option<Vec<String>>,  // массив служб
     pub StartDateTime: Option<String>,
     pub EndDateTime: Option<String>,
     pub DowntimeTypeID: Option<String>,
     pub Comment: Option<String>,
     pub Author: Option<String>,
-    pub Area: Option<String>,  // Добавляем Area
+    pub Area: Option<String>,  
 }

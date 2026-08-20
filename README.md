@@ -394,6 +394,8 @@ Downtime_route
 /downtimes/workpiece
 /downtimes/rolling
 /downtimes/utk
+/downtimes/kp
+/downtimes/unk
 /downtimes/uppo
 /downtimes/unk
 ```

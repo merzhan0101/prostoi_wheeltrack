@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Мониторинг участков</title>
+<link rel="shortcut icon" href="/static/sit_logo_11.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/areas_monitoring.css?v={{ static_version }}">
+</head>
+<body>
+
+<main>
+    <div class="mn-wrap">
+
+        <div class="mn-statusbar">
+            <div>
+                <p class="lbl">Горячий пролёт</p>
+                <h1>Мониторинг участков</h1>
+            </div>
+
+            <div class="mn-filters" id="mn-filters"></div>
+
+            <div class="mn-clock">
+                <div class="mn-clock__time" id="clock-time">--:--:--</div>
+                <div class="mn-clock__date" id="clock-date">—</div>
+            </div>
+        </div>
+
+        <div class="mn-grid" id="mn-grid"></div>
+
+    </div>
+</main>
+
+<div class="mn-modal" id="mn-modal">
+    <div class="mn-modal__card">
+        <div class="mn-modal__header">
+            <h2 id="mn-modal-title">Простои</h2>
+            <div class="mn-modal__actions">
+                <label class="mn-modal__date-label">
+                    <i class="far fa-calendar-alt"></i>
+                    <input type="date" id="mn-modal-date">
+                </label>
+                <button type="button" class="mn-modal__date-clear" id="mn-modal-date-clear" title="Сбросить фильтр">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button type="button" class="mn-modal__close" id="mn-modal-close">&times;</button>
+            </div>
+        </div>
+        <div class="mn-modal__body">
+            <table class="mn-table">
+                <thead>
+                    <tr>
+                        <th>Документ</th>
+                        <th>Оборудование</th>
+                        <th>Начало / Конец простоя</th>
+                        <th>Тип простоя</th>
+                        <th>Автор</th>
+                        <th>Комментарий</th>
+                    </tr>
+                </thead>
+                <tbody id="mn-history-body">
+                    <tr><td colspan="6" class="mn-loading">Загрузка данных...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/areas_monitoring.js?v={{ static_version }}"></script>
+</body>
+</html>
