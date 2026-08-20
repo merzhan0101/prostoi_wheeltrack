@@ -98,31 +98,6 @@ pub struct GetDowntimesRequest {
     // pub Comment: Option<String>,
 }
 
-// _________________________________
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct ApiResponse {
-    pub errors: Option<serde_json::Value>,
-    pub data: Vec<DowntimeItem>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-struct DowntimeItem {
-    pub eamid: String,
-    pub eam_doc_name: String,
-    pub eam_downtime: i32,
-    pub equipment_id: String,
-    pub department_id: String,
-    pub start_date_time: String,
-    pub end_date_time: String,
-    pub downtime_type_id: String,
-    pub duration: i64,
-    pub author: String,
-    pub deleted: i32,
-    pub posted: i32,
-}
-
 #[allow(non_snake_case)]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GetDowntime {
@@ -164,3 +139,29 @@ pub struct UpdateData {
     pub Author: Option<String>,
     pub Area: Option<String>,  
 }
+
+// _________________________________
+/* не используется ?
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct ApiResponse {
+    pub errors: Option<serde_json::Value>,
+    pub data: Vec<DowntimeItem>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct DowntimeItem {
+    pub eamid: String,
+    pub eam_doc_name: String,
+    pub eam_downtime: i32,
+    pub equipment_id: String,
+    pub department_id: String,
+    pub start_date_time: String,
+    pub end_date_time: String,
+    pub downtime_type_id: String,
+    pub duration: i64,
+    pub author: String,
+    pub deleted: i32,
+    pub posted: i32,
+}*/

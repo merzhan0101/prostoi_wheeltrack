@@ -407,202 +407,6 @@ pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> 
     }
 }
 
-// prev local
-/*pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> Result<()> {
-    let mut client = pool.pool_raport.get().await?;
-
-    // =========================================================
-    // В ЛОКАЛЬНОМ РЕЖИМЕ ОТКЛЮЧАЕМ FOREIGN KEY
-    // =========================================================
-    let is_local_mode = body.get("_local_mode").and_then(|v| v.as_bool()).unwrap_or(false);
-    
-    if is_local_mode {
-        // Отключаем FOREIGN KEY
-        let disable_query = "ALTER TABLE Downtimes NOCHECK CONSTRAINT FK_Downtimes_Equip";
-        if let Err(e) = client.execute(disable_query, &[]).await {
-            eprintln!("⚠️ Не удалось отключить FOREIGN KEY: {}", e);
-        } else {
-            // println!("🔓 FOREIGN KEY отключена для локального сохранения");
-        }
-    }
-
-    let eam_version = result_http
-        .get("EAMVersion")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-
-    let bin_id = result_http
-        .get("EAMID")
-        .and_then(|v| v.as_str())
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .map(|u| u.into_bytes().to_vec())
-        .unwrap_or_default();
-
-    let eam_doc = result_http
-        .get("EAMDocName")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-
-    // Парсим даты
-    let start_date_str = body
-        .get("StartDateTime")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    
-    let dt = if !start_date_str.is_empty() {
-        match NaiveDateTime::parse_from_str(start_date_str, "%Y%m%d%H%M%S") {
-            Ok(dt) => dt,
-            Err(e) => {
-                eprintln!("❌ Ошибка парсинга StartDateTime '{}': {}", start_date_str, e);
-                chrono::Local::now().naive_local()
-            }
-        }
-    } else {
-        chrono::Local::now().naive_local()
-    };
-
-    let dt1 = body
-        .get("EndDateTime")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty())
-        .and_then(|s| NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M%S").ok());
-
-    // Получаем EquipmentID
-    let equipment_id = body
-        .get("EquipmentID")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-
-    let equipment_id_bin = if !equipment_id.is_empty() {
-        match Uuid::parse_str(equipment_id) {
-            Ok(uuid) => uuid.into_bytes().to_vec(),
-            Err(e) => {
-                eprintln!("❌ Ошибка парсинга EquipmentID '{}': {}", equipment_id, e);
-                Vec::new()
-            }
-        }
-    } else {
-        Vec::new()
-    };
-
-    // Получаем DepartmentID
-    let department_id = body
-        .get("DepartmentID")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-
-    let downtime_id_bin = body
-        .get("DowntimeTypeID")
-        .and_then(|v| v.as_str())
-        .and_then(|s| Uuid::parse_str(s).ok())
-        .map(|u| u.into_bytes().to_vec())
-        .unwrap_or_default();
-
-    let is_empty = body
-        .get("EAMID")
-        .and_then(|v| v.as_str())
-        .map_or(true, |s| s.is_empty());
-
-    let department_id_bin: Option<Vec<u8>> = if !department_id.is_empty() {
-        match Uuid::parse_str(department_id) {
-            Ok(uuid) => Some(uuid.into_bytes().to_vec()),
-            Err(_) => None
-        }
-    } else {
-        None
-    };
-
-    let author = body
-        .get("Author")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_string();
-    
-    let comment = body
-        .get("Comment")
-        .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty())
-        .map(|s| s.to_string());
-
-    let result = if is_empty {
-        let insert = "
-            INSERT INTO Downtimes 
-            (Id, EquipmentID, DepartmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion)
-            VALUES(@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10)
-        ";
-        
-        client
-            .execute(
-                insert,
-                &[
-                    &bin_id,
-                    &equipment_id_bin,
-                    &department_id_bin,
-                    &downtime_id_bin,
-                    &dt,
-                    &dt1,
-                    &author,
-                    &comment,
-                    &eam_doc,
-                    &eam_version,
-                ],
-            )
-            .await
-    } else {
-        let update = "
-            UPDATE Downtimes
-            SET
-                EquipmentID = @P1,
-                DepartmentID = COALESCE(@P2, DepartmentID),
-                DowntimeTypeID = @P3,
-                StartDateTime = @P4,
-                EndDateTime = @P5,
-                Author = @P6,
-                Comment = @P7
-            WHERE Id = @P8
-        ";
-
-        client
-            .execute(
-                update,
-                &[
-                    &equipment_id_bin,
-                    &department_id_bin,
-                    &downtime_id_bin,
-                    &dt,
-                    &dt1,
-                    &author,
-                    &comment,
-                    &bin_id,
-                ],
-            )
-            .await
-    };
-
-    // Включаем FOREIGN KEY обратно
-    if is_local_mode {
-        let enable_query = "ALTER TABLE Downtimes CHECK CONSTRAINT FK_Downtimes_Equip";
-        if let Err(e) = client.execute(enable_query, &[]).await {
-            eprintln!("⚠️ Не удалось включить FOREIGN KEY: {}", e);
-        } else {
-            // println!("🔒 FOREIGN KEY включена обратно");
-        }
-    }
-
-    match result {
-        Ok(_) => {
-            // println!("✅ Запись успешно сохранена в БД");
-            Ok(())
-        }
-        Err(e) => {
-            eprintln!("❌ Ошибка вставки/обновления в БД: {}", e);
-            Err(anyhow::anyhow!("Ошибка БД: {}", e))
-        }
-    }
-}*/
-
 // ____________________________________________________________________________________
 pub async fn get_downtimes_vec_jsonn(
     pool: &AppState,
@@ -1647,3 +1451,200 @@ pub async fn get_monitoring_downtimes_local(
 
     Ok(result)
 }
+
+
+// prev local
+/*pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> Result<()> {
+    let mut client = pool.pool_raport.get().await?;
+
+    // =========================================================
+    // В ЛОКАЛЬНОМ РЕЖИМЕ ОТКЛЮЧАЕМ FOREIGN KEY
+    // =========================================================
+    let is_local_mode = body.get("_local_mode").and_then(|v| v.as_bool()).unwrap_or(false);
+    
+    if is_local_mode {
+        // Отключаем FOREIGN KEY
+        let disable_query = "ALTER TABLE Downtimes NOCHECK CONSTRAINT FK_Downtimes_Equip";
+        if let Err(e) = client.execute(disable_query, &[]).await {
+            eprintln!("⚠️ Не удалось отключить FOREIGN KEY: {}", e);
+        } else {
+            // println!("🔓 FOREIGN KEY отключена для локального сохранения");
+        }
+    }
+
+    let eam_version = result_http
+        .get("EAMVersion")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let bin_id = result_http
+        .get("EAMID")
+        .and_then(|v| v.as_str())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .map(|u| u.into_bytes().to_vec())
+        .unwrap_or_default();
+
+    let eam_doc = result_http
+        .get("EAMDocName")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    // Парсим даты
+    let start_date_str = body
+        .get("StartDateTime")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    
+    let dt = if !start_date_str.is_empty() {
+        match NaiveDateTime::parse_from_str(start_date_str, "%Y%m%d%H%M%S") {
+            Ok(dt) => dt,
+            Err(e) => {
+                eprintln!("❌ Ошибка парсинга StartDateTime '{}': {}", start_date_str, e);
+                chrono::Local::now().naive_local()
+            }
+        }
+    } else {
+        chrono::Local::now().naive_local()
+    };
+
+    let dt1 = body
+        .get("EndDateTime")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .and_then(|s| NaiveDateTime::parse_from_str(s, "%Y%m%d%H%M%S").ok());
+
+    // Получаем EquipmentID
+    let equipment_id = body
+        .get("EquipmentID")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let equipment_id_bin = if !equipment_id.is_empty() {
+        match Uuid::parse_str(equipment_id) {
+            Ok(uuid) => uuid.into_bytes().to_vec(),
+            Err(e) => {
+                eprintln!("❌ Ошибка парсинга EquipmentID '{}': {}", equipment_id, e);
+                Vec::new()
+            }
+        }
+    } else {
+        Vec::new()
+    };
+
+    // Получаем DepartmentID
+    let department_id = body
+        .get("DepartmentID")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let downtime_id_bin = body
+        .get("DowntimeTypeID")
+        .and_then(|v| v.as_str())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .map(|u| u.into_bytes().to_vec())
+        .unwrap_or_default();
+
+    let is_empty = body
+        .get("EAMID")
+        .and_then(|v| v.as_str())
+        .map_or(true, |s| s.is_empty());
+
+    let department_id_bin: Option<Vec<u8>> = if !department_id.is_empty() {
+        match Uuid::parse_str(department_id) {
+            Ok(uuid) => Some(uuid.into_bytes().to_vec()),
+            Err(_) => None
+        }
+    } else {
+        None
+    };
+
+    let author = body
+        .get("Author")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    
+    let comment = body
+        .get("Comment")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+
+    let result = if is_empty {
+        let insert = "
+            INSERT INTO Downtimes 
+            (Id, EquipmentID, DepartmentID, DowntimeTypeID, StartDateTime, EndDateTime, Author, Comment, EAMDocName, EAMVersion)
+            VALUES(@P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10)
+        ";
+        
+        client
+            .execute(
+                insert,
+                &[
+                    &bin_id,
+                    &equipment_id_bin,
+                    &department_id_bin,
+                    &downtime_id_bin,
+                    &dt,
+                    &dt1,
+                    &author,
+                    &comment,
+                    &eam_doc,
+                    &eam_version,
+                ],
+            )
+            .await
+    } else {
+        let update = "
+            UPDATE Downtimes
+            SET
+                EquipmentID = @P1,
+                DepartmentID = COALESCE(@P2, DepartmentID),
+                DowntimeTypeID = @P3,
+                StartDateTime = @P4,
+                EndDateTime = @P5,
+                Author = @P6,
+                Comment = @P7
+            WHERE Id = @P8
+        ";
+
+        client
+            .execute(
+                update,
+                &[
+                    &equipment_id_bin,
+                    &department_id_bin,
+                    &downtime_id_bin,
+                    &dt,
+                    &dt1,
+                    &author,
+                    &comment,
+                    &bin_id,
+                ],
+            )
+            .await
+    };
+
+    // Включаем FOREIGN KEY обратно
+    if is_local_mode {
+        let enable_query = "ALTER TABLE Downtimes CHECK CONSTRAINT FK_Downtimes_Equip";
+        if let Err(e) = client.execute(enable_query, &[]).await {
+            eprintln!("⚠️ Не удалось включить FOREIGN KEY: {}", e);
+        } else {
+            // println!("🔒 FOREIGN KEY включена обратно");
+        }
+    }
+
+    match result {
+        Ok(_) => {
+            // println!("✅ Запись успешно сохранена в БД");
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("❌ Ошибка вставки/обновления в БД: {}", e);
+            Err(anyhow::anyhow!("Ошибка БД: {}", e))
+        }
+    }
+}*/
