@@ -25,19 +25,24 @@ function getCurrentAreaDepartmentId() {
   return element.value;
 }
 
-    // for alert
-    function showToast(message) {
-        const toast = document.getElementById('custom-toast');
-        const text = document.getElementById('toast-message');
+// инструкция ПДФ
+function openPdf() {
+    window.open('/instruction_downtime', '_blank');
+}
 
-        text.textContent = message;
+// for alert
+function showToast(message) {
+    const toast = document.getElementById('custom-toast');
+    const text = document.getElementById('toast-message');
 
-        toast.classList.add('show');
+    text.textContent = message;
 
-        setTimeout(() => {
-            toast.classList.remove('show');
-        }, 3000);
-    }
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     const currentAreaSlugElement =

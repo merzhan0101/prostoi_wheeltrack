@@ -9,6 +9,26 @@ use actix_web::{HttpResponse, Responder, get, post, web};
 use askama::Template;
 use uuid::Uuid;
 use chrono::Local;
+use std::fs;
+use std::path::Path;
+
+// ________________________________________________________________________________
+async fn open_pdf() -> HttpResponse {
+    // Путь к файлу относительно корня проекта
+    let pdf_path = Path::new("static/instructions/instructionDowntimeZU.pdf");
+    
+    match fs::read(pdf_path) {
+        Ok(content) => HttpResponse::Ok()
+            .content_type("application/pdf")
+            .body(content),
+        Err(e) => {
+            eprintln!("Ошибка чтения PDF: {}", e);
+            HttpResponse::NotFound()
+                .content_type("text/plain; charset=utf-8")
+                .body("Инструкция не найдена")
+        }
+    }
+}
 
 // ________________________________________________________________________________
 #[get("/downtimes/{area}")]
@@ -1586,4 +1606,6 @@ pub fn conf_downtimes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_area_monitoring);
     cfg.service(get_monitoring_downtimes);
     cfg.service(filter_monitoring_downtimes);
+    // ==== инструкция ====
+    cfg.route("/instruction_downtime", web::get().to(open_pdf));
 }

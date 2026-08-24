@@ -1208,3 +1208,26 @@ footer {
     color: #22c55e;
     font-size: 20px;
 }
+
+/* Стили для кнопки ИНСТРУКЦИЯ */
+.btn-ins {
+    background: #f59e0b;
+    color: white;
+    box-shadow: 0 10px 20px rgba(245, 158, 11, 0.25);
+}
+
+.btn-ins:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 25px rgba(245, 158, 11, 0.35);
+    filter: brightness(1.1);
+}
+
+.btn-ins i {
+    font-size: 16px;
+}
+
+.actions-container {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
