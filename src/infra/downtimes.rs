@@ -526,6 +526,179 @@ async fn update_downtime(
     if !eamid.is_empty() {
         // Создаем payload для обновления в том же формате, что и для создания
         let mut update_payload = payload.clone();
+
+        // Убеждаемся, что EAMID заполнен
+        update_payload["EAMID"] = serde_json::json!(eamid);
+
+        // Добавляем Area если есть
+        if let Some(area) = payload.get("Area").and_then(|v| v.as_str()) {
+            if !area.is_empty() {
+                update_payload["Area"] = serde_json::json!(area);
+            }
+        }
+
+        // Добавляем DepartmentIDs если есть
+        if let Some(dept_ids) = payload.get("DepartmentIDs").and_then(|v| v.as_array()) {
+            if !dept_ids.is_empty() {
+                update_payload["DepartmentIDs"] = serde_json::json!(dept_ids);
+            }
+        }
+
+        // Удаляем EquipmentIDs если есть (при обновлении только одно оборудование)
+        if let Some(object) = update_payload.as_object_mut() {
+            object.remove("EquipmentIDs");
+        }
+
+        // Проверяем, есть ли EquipmentID
+        let equipment_id = update_payload
+            .get("EquipmentID")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
+        if equipment_id.is_empty() {
+            return HttpResponse::BadRequest().json(
+                serde_json::json!({
+                    "Posted": 0,
+                    "ErrorMessage": "Не указано оборудование"
+                })
+            );
+        }
+
+        // =========================================================
+        // ГОТОВИМ ОТДЕЛЬНЫЙ PAYLOAD ДЛЯ ТОИР
+        // =========================================================
+        let mut toir_payload = update_payload.clone();
+        if let Some(object) = toir_payload.as_object_mut() {
+            object.remove("Area");
+            object.remove("DepartmentIDs");
+        }
+
+        // Пробуем явно передать флаги, которых нет в нашем payload,
+        // но которые есть в структуре документа ТОИР (Data.Deleted, Data.Posted)
+        toir_payload["Deleted"] = serde_json::json!(false);
+        toir_payload["Posted"] = serde_json::json!(true);
+
+        eprintln!(
+            "📤 Отправка в ТОИР (edit, тест с Deleted/Posted): {}",
+            serde_json::to_string_pretty(&toir_payload).unwrap_or_default()
+        );
+
+        // Подтягиваем актуальную EAMVersion документа у ТОИР —
+        // без неё модуль ТОИР падает на приведении к Булево.
+        if let Some(version) = get_version_from_toir(&client_http, &pool, eamid).await {
+            toir_payload["EAMVersion"] = serde_json::json!(version);
+        } else {
+            eprintln!("⚠️ Не удалось получить EAMVersion для {} — пробуем без версии", eamid);
+        }
+
+        eprintln!(
+            "📤 Отправка в ТОИР (edit): {}",
+            serde_json::to_string_pretty(&toir_payload).unwrap_or_default()
+        );
+
+        let response = match client_http
+            .post(format!("{}/update_downtime", pool.toir_url))
+            .basic_auth(&pool.toir_login, Some(&pool.toir_password))
+            .json(&toir_payload)
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(error) => {
+                eprintln!("Ошибка запроса в ТОИР: {}", error);
+                return HttpResponse::InternalServerError().json(
+                    serde_json::json!({
+                        "Posted": 0,
+                        "ErrorMessage": "ТОИР не отвечает"
+                    })
+                );
+            }
+        };
+
+        // Получаем текст ответа
+        let response_text = match response.text().await {
+            Ok(text) => text,
+            Err(error) => {
+                eprintln!("Ошибка чтения ответа ТОИР: {}", error);
+                return HttpResponse::InternalServerError().json(
+                    serde_json::json!({
+                        "Posted": 0,
+                        "ErrorMessage": "Ошибка чтения ответа ТОИР"
+                    })
+                );
+            }
+        };
+
+        // Проверяем, является ли ответ JSON
+        if response_text.trim().starts_with('{') {
+            match serde_json::from_str::<serde_json::Value>(&response_text) {
+                Ok(result_http) => {
+                    let posted = result_http
+                        .get("Posted")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+
+                    if posted != 1 {
+                        let error_msg = result_http
+                            .get("ErrorMessage")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Неизвестная ошибка");
+
+                        return HttpResponse::Ok().json(
+                            serde_json::json!({
+                                "Posted": 0,
+                                "ErrorMessage": format!("❌ ТОИР не принял изменения: {}", error_msg)
+                            })
+                        );
+                    }
+
+                    // Обновляем локальную БД — здесь используем ПОЛНЫЙ payload
+                    // (с Area/DepartmentIDs), локальной базе они не мешают
+                    if let Err(error) = db::update_insert(&pool, update_payload, result_http).await {
+                        eprintln!("Ошибка обновления локальной БД: {}", error);
+                        return HttpResponse::InternalServerError().json(
+                            serde_json::json!({
+                                "Posted": 0,
+                                "ErrorMessage": "Ошибка обновления локальной базы"
+                            })
+                        );
+                    }
+
+                    // УСПЕХ - возвращаем единообразный ответ
+                    return HttpResponse::Ok().json(
+                        serde_json::json!({
+                            "Posted": 1,
+                            "Message": "✅ Простой успешно обновлен"
+                        })
+                    );
+                }
+                Err(error) => {
+                    eprintln!("Ошибка парсинга JSON от ТОИР: {}", error);
+                    eprintln!("Ответ ТОИР: {}", response_text);
+
+                    return HttpResponse::Ok().json(
+                        serde_json::json!({
+                            "Posted": 0,
+                            "ErrorMessage": format!("❌ Некорректный ответ ТОИР: {}", response_text)
+                        })
+                    );
+                }
+            }
+        } else {
+            eprintln!("ТОИР вернул не JSON: {}", response_text);
+
+            return HttpResponse::Ok().json(
+                serde_json::json!({
+                    "Posted": 0,
+                    "ErrorMessage": format!("❌ Ошибка в ТОИР: {}", response_text)
+                })
+            );
+        }
+    }
+
+    /*if !eamid.is_empty() {
+        // Создаем payload для обновления в том же формате, что и для создания
+        let mut update_payload = payload.clone();
         
         // Убеждаемся, что EAMID заполнен
         update_payload["EAMID"] = serde_json::json!(eamid);
@@ -666,7 +839,7 @@ async fn update_downtime(
                 })
             );
         }
-    }
+    }*/
 
 
     // =========================================================
@@ -811,13 +984,32 @@ async fn update_downtime(
             .unwrap_or(0);
 
         if posted != 1 {
+            let error_msg = result_http
+                .get("ErrorMessage")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Неизвестная ошибка");
+
+            eprintln!(
+                "❌ ТОИР отклонил создание простоя. EquipmentID={}, Ответ ТОИР: {:#?}",
+                equipment_id, result_http
+            );
+
+            return HttpResponse::Ok().json(
+                serde_json::json!({
+                    "Posted": 0,
+                    "ErrorMessage": format!("❌ ТОИР не принял простой: {}", error_msg)
+                }),
+            );
+        }
+
+        /*if posted != 1 {
             return HttpResponse::Ok().json(
                 serde_json::json!({
                     "Posted": 0,
                     "ErrorMessage": "ТОИР не принял простой"
                 }),
             );
-        }
+        }*/
 
         if let Err(error) =
             db::update_insert(&pool, one_payload, result_http).await
@@ -1130,7 +1322,7 @@ async fn get_departments(
     HttpResponse::Ok().json(data)
 }
 
-async fn get_version_from_toir(
+/*async fn get_version_from_toir(
     client: &Client,
     pool: &AppState,
     eamid: &str,
@@ -1195,6 +1387,75 @@ async fn get_version_from_toir(
         }
         Err(e) => {
             eprintln!("Ошибка запроса к ТОИР: {}", e);
+            None
+        }
+    }
+}*/
+
+async fn get_version_from_toir(
+    client: &Client,
+    pool: &AppState,
+    eamid: &str,
+) -> Option<String> {
+    let request = serde_json::json!({
+        "EAMID": eamid
+    });
+
+    let response = match client
+        .post(format!("{}/get_downtime", pool.toir_url))
+        .basic_auth(&pool.toir_login, Some(&pool.toir_password))
+        .json(&request)
+        .send()
+        .await
+    {
+        Ok(response) => response,
+        Err(error) => {
+            eprintln!("Ошибка запроса к ТОИР (get_version): {}", error);
+            return None;
+        }
+    };
+
+    let status = response.status();
+
+    // Читаем как ТЕКСТ, а не сразу как JSON — чтобы видеть реальный
+    // ответ ТОИР, даже если это не валидный JSON (как с ошибкой 511)
+    let response_text = match response.text().await {
+        Ok(text) => text,
+        Err(error) => {
+            eprintln!("Ошибка чтения ответа ТОИР (get_version): {}", error);
+            return None;
+        }
+    };
+
+    eprintln!(
+        "🔍 /get_downtime для EAMID={} — статус: {}, сырой ответ:\n{}",
+        eamid, status, response_text
+    );
+
+    if !status.is_success() {
+        return None;
+    }
+
+    match serde_json::from_str::<serde_json::Value>(&response_text) {
+        Ok(json) => {
+            // Печатаем ВСЕ ключи в Data, чтобы увидеть реальную структуру
+            if let Some(data) = json.get("Data") {
+                eprintln!(
+                    "🔍 Полный объект Data от ТОИР:\n{}",
+                    serde_json::to_string_pretty(data).unwrap_or_default()
+                );
+            }
+
+            let version = json
+                .get("Data")
+                .and_then(|d| d.get("EAMVersion"))
+                .and_then(|v| v.as_str())
+                .or_else(|| json.get("EAMVersion").and_then(|v| v.as_str()));
+
+            version.map(|s| s.to_string())
+        }
+        Err(error) => {
+            eprintln!("Ошибка парсинга JSON (get_version): {}", error);
             None
         }
     }

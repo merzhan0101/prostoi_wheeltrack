@@ -211,7 +211,10 @@
                         <div class="form-group full-width">
                             <label>Оборудование</label>
                             <div class="search-select-container" id="edit-eq-container"> <!-- Добавлен ID контейнера -->
-                                <input type="text" class="search-input" id="edit-equipment-search" ...>
+                                <div class="input-with-clear">
+                                    <input type="text" class="search-input" id="edit-equipment-search" placeholder="Поиск оборудования..." autocomplete="off">
+                                    <i class="fas fa-times clear-btn"></i>
+                                </div>
                                 <input type="hidden" id="edit-equipment-id">
                                 <div class="search-dropdown" id="edit-eq-dropdown"></div>
                             </div>
@@ -235,7 +238,10 @@
                         <div class="form-group full-width">
                             <label>Кто создал (ФИО)</label>
                             <div class="search-select-container" id="edit-worker-container"> <!-- Добавлен ID контейнера -->
-                                <input type="text" class="search-input" id="edit-worker-search" ...>
+                                <div class="input-with-clear">
+                                    <input type="text" class="search-input" id="edit-worker-search" placeholder="Поиск сотрудника..." autocomplete="off">
+                                    <i class="fas fa-times clear-btn"></i>
+                                </div>
                                 <input type="hidden" id="edit-worker-id">
                                 <div class="search-dropdown" id="edit-worker-dropdown"></div>
                             </div>
