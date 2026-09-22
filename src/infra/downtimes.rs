@@ -368,6 +368,18 @@ async fn get_downtime_types(pool: web::Data<AppState>) -> impl Responder {
  
 // ________________________________________________________________________________
 // /GS_downtimeExchange.Method.update_downtime
+// #[post("/api/update_downtime")]
+// async fn update_downtime(
+//     pool: web::Data<AppState>,
+//     body: web::Json<serde_json::Value>,
+// ) -> impl Responder {
+//     let payload = body.into_inner();
+
+//     let eamid = payload
+//         .get("EAMID")
+//         .and_then(|value| value.as_str())
+//         .unwrap_or("");
+
 #[post("/api/update_downtime")]
 async fn update_downtime(
     pool: web::Data<AppState>,
@@ -379,6 +391,31 @@ async fn update_downtime(
         .get("EAMID")
         .and_then(|value| value.as_str())
         .unwrap_or("");
+
+    // =========================================================
+    // ВАЛИДАЦИЯ: начало простоя не может быть позже конца
+    // =========================================================
+    let start_date = payload
+        .get("StartDateTime")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    let end_date = payload
+        .get("EndDateTime")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    // EndDateTime может быть пустым (простой ещё идёт) — тогда не проверяем.
+    // Формат "YYYYMMDDHHMMSS" одинаковой длины — строковое сравнение работает как временное.
+    if !start_date.is_empty() && !end_date.is_empty() && start_date > end_date {
+        return HttpResponse::BadRequest().json(
+            serde_json::json!({
+                "Posted": 0,
+                "ErrorMessage": "Дата и время начала простоя не могут быть позже даты и времени окончания"
+            })
+        );
+    }
+
 
     // =========================================================
     // ЛОКАЛЬНЫЙ РЕЖИМ 

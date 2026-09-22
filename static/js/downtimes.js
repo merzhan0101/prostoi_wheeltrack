@@ -470,6 +470,16 @@ renderSelectedEquipments();
                 return;
             }
 
+            // проверка дат
+            const startVal = document.getElementById('modal-start').value;
+            const endVal = document.getElementById('modal-end').value;
+
+            if (startVal && endVal && new Date(startVal) > new Date(endVal)) {
+                showToast("Ошибка: Начало простоя не может быть позже конца простоя!");
+                // alert("Ошибка: Начало простоя не может быть позже конца простоя!");
+                return;
+            }
+
             document.getElementById('modal-comment').addEventListener('input', function() {
                 this.style.borderColor = '';
             });
@@ -871,58 +881,68 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- ОБРАБОТКА ФОРМ ---
     document.getElementById('editForm').onsubmit = async (e) => {
-    e.preventDefault();
-    
-    const payload = {
-        Area: getCurrentAreaSlug(),
-        DepartmentID: getCurrentAreaDepartmentId(),
-        DepartmentIDs: [getCurrentAreaDepartmentId()],
-        EAMID: document.getElementById('edit-entry-id').value,
-        EquipmentID: document.getElementById('edit-equipment-id').value,
-        StartDateTime: formatToEAMDate(document.getElementById('edit-start').value),
-        EndDateTime: formatToEAMDate(document.getElementById('edit-end').value),
-        DowntimeTypeID: document.getElementById('edit-type').value,
-        Author: document.getElementById('edit-worker-search').value,
-        Comment: document.getElementById('edit-comment').value
-    };
+        e.preventDefault();
 
-    // console.log('payload:', JSON.stringify(payload, null, 2));
+        // проверка дат
+        const startVal = document.getElementById('edit-start').value;
+        const endVal = document.getElementById('edit-end').value;
 
-    try {
-        const response = await fetch('/api/update_downtime', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        // Получаем ответ как текст сначала для диагностики
-        const responseText = await response.text();
-        // console.log('Ответ от сервера:', responseText);
-        
-        // Парсим JSON
-        let result;
-        try {
-            result = JSON.parse(responseText);
-        } catch (parseError) {
-            console.error('Ошибка парсинга JSON:', parseError);
-            alert('❌ Ошибка: сервер вернул некорректный ответ');
+        if (startVal && endVal && new Date(startVal) > new Date(endVal)) {
+            showToast("Ошибка: Начало простоя не может быть позже конца простоя!");
+            // alert("Ошибка: Начало простоя не может быть позже конца простоя!");
             return;
         }
         
-        // Проверяем результат
-        if (result.Posted === 1) {
-            showToast("✅ Простой успешно обновлён");
-            setTimeout(() => location.reload(), 1200);
-        } else {
-            // Показываем понятную ошибку
-            const errorMsg = result.ErrorMessage || "Неизвестная ошибка";
-            alert("❌ Ошибка: " + errorMsg);
+        const payload = {
+            Area: getCurrentAreaSlug(),
+            DepartmentID: getCurrentAreaDepartmentId(),
+            DepartmentIDs: [getCurrentAreaDepartmentId()],
+            EAMID: document.getElementById('edit-entry-id').value,
+            EquipmentID: document.getElementById('edit-equipment-id').value,
+            StartDateTime: formatToEAMDate(document.getElementById('edit-start').value),
+            EndDateTime: formatToEAMDate(document.getElementById('edit-end').value),
+            DowntimeTypeID: document.getElementById('edit-type').value,
+            Author: document.getElementById('edit-worker-search').value,
+            Comment: document.getElementById('edit-comment').value
+        };
+
+        // console.log('payload:', JSON.stringify(payload, null, 2));
+
+        try {
+            const response = await fetch('/api/update_downtime', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            // Получаем ответ как текст сначала для диагностики
+            const responseText = await response.text();
+            // console.log('Ответ от сервера:', responseText);
+            
+            // Парсим JSON
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('Ошибка парсинга JSON:', parseError);
+                alert('❌ Ошибка: сервер вернул некорректный ответ');
+                return;
+            }
+            
+            // Проверяем результат
+            if (result.Posted === 1) {
+                showToast("✅ Простой успешно обновлён");
+                setTimeout(() => location.reload(), 1200);
+            } else {
+                // Показываем понятную ошибку
+                const errorMsg = result.ErrorMessage || "Неизвестная ошибка";
+                alert("❌ Ошибка: " + errorMsg);
+            }
+        } catch (err) {
+            console.error('Ошибка:', err);
+            alert('❌ Сетевая ошибка при сохранении. Проверьте подключение к серверу.');
         }
-    } catch (err) {
-        console.error('Ошибка:', err);
-        alert('❌ Сетевая ошибка при сохранении. Проверьте подключение к серверу.');
-    }
-};
+    };
 });
 
 // --- ЗАГРУЗКА ДАННЫХ В ТАБЛИЦУ ---
