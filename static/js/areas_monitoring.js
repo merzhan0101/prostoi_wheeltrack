@@ -1,5 +1,19 @@
 const PHOTO_ICON = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="m4 17 5-5 4 4 3-2 4 4"/></svg>';
 
+// Фото доступны для части оборудования — остальные карточки продолжают
+// показывать SVG-заглушку PHOTO_ICON.
+const EQUIPMENT_PHOTOS = {
+    // '3b831837-cc63-11ed-8163-00155d16fe68': '/static/img/mermec.webp',        // Устройство лазерное измерительное Mermec
+    // '1f3d47e7-cee7-11ed-8163-00155d16fe68': '/static/img/glama_d3.webp',      // Манипулятор D3: Портал 3
+    // '13d77b55-c172-11ed-8163-00155d16fe68': '/static/img/press_10k.webp',     // Пресс МН-10000 Schuler
+    // 'c0489326-cd25-11ed-8163-00155d16fe68': '/static/img/kp.webp',            // Кольцевая печь
+    // 'acff607c-be26-11ed-8163-00155d16fe68': '/static/img/glama_a1.webp',      // Портальный манипулятор Glama А1
+    // '9dcbed00-c14a-11ed-8163-00155d16fe68': '/static/img/sggt.webp',          // Установка для удаления окалины SGGT
+    // '7ffcb411-bc9a-11ed-8163-00155d16fe68': '/static/img/linsinger_saw.webp', // Пильная установка LINSINGER №1
+    // '29cad886-c3bd-11ed-8163-00155d16fe68': '/static/img/linsinger_saw.webp', // Пильная установка LINSINGER №2
+    // '9b7d1cf6-c222-11ed-8163-00155d16fe68': '/static/img/linsinger_saw.webp'  // Пильная установка LINSINGER №3
+};
+
 const STATUS = {
     run:  { label: 'В работе', color: '#16a34a' },
     wait: { label: 'Ожидание', color: '#f59e0b' },
@@ -59,9 +73,14 @@ function clock(d) {
 function equipmentMarkup(eq) {
     const status = eq.Status || 'run';
 
+    const photoUrl = EQUIPMENT_PHOTOS[(eq.EquipmentID || '').toLowerCase()];
+    const photo = photoUrl
+        ? `<img src="${photoUrl}" alt="${eq.EquipmentName || ''}" loading="lazy">`
+        : PHOTO_ICON;
+
     return `
         <div class="mn-eq mn-eq--${status}" title="${STATUS[status].label}">
-            <div class="mn-eq__photo">${PHOTO_ICON}</div>
+            <div class="mn-eq__photo">${photo}</div>
             <div class="mn-eq__name">${eq.EquipmentName || '-'}</div>
         </div>`;
 }
