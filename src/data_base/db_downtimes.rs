@@ -30,7 +30,7 @@ pub async fn get_equipment(
 
     let mut query = Query::new(
         "
-        SELECT TOP 10
+        SELECT
             e.Id,
             e.Name
         FROM DTEquipments e
