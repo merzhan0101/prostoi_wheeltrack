@@ -199,6 +199,7 @@ pub const MONITORING_AREAS: &[MonitoringArea] = &[
         equipment_ids: &[
             "c0489326-cd25-11ed-8163-00155d16fe68", // Кольцевая печь
             "5930bdc5-cd1e-11ed-8163-00155d16fe68", // Транспортная система подачи и выдачи заготовок Krei-ma
+            "bce3b454-ce17-11ed-8163-00155d16fe68", // Портальный манипулятор GLAMA D1
             "9bb0b344-cd3d-11ed-8163-00155d16fe68", // Манипулятор выгрузки кольцевой печи Glama B2
         ],
     },
@@ -207,7 +208,6 @@ pub const MONITORING_AREAS: &[MonitoringArea] = &[
         name: "Термоучасток",
         department_id: "92b138cb-c131-11ed-8163-00155d16fe68",
         equipment_ids: &[
-            "bce3b454-ce17-11ed-8163-00155d16fe68", // Портальный манипулятор GLAMA D1
             "9eac762f-cd44-11ed-8163-00155d16fe68", // Транспортная система линии термообработки Krei-ma
             "abdc0a0d-ce1b-11ed-8163-00155d16fe68", // Портальный манипулятор GLAMA D2
             "bb85d7f9-cea3-11ed-8163-00155d16fe68", // Трансбордеры с системой гидравлики Vollert
