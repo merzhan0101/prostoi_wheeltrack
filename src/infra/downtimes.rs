@@ -1570,37 +1570,6 @@ async fn get_area_monitoring(
     }
 }
 
-
-/*#[get("/api/{area}/monitoring")]
-async fn get_area_monitoring(
-    pool: web::Data<AppState>,
-    path: web::Path<String>,
-) -> impl Responder {
-    let area_slug = path.into_inner();
-
-    let Some(area) = db::find_monitoring_area(&area_slug) else {
-        return HttpResponse::BadRequest().json(
-            serde_json::json!({
-                "error": "Неизвестный участок"
-            }),
-        );
-    };
-
-    match db::get_area_monitoring(&pool, area).await {
-        Ok(data) => HttpResponse::Ok().json(data),
-
-        Err(error) => {
-            eprintln!("Ошибка получения статуса участка: {}", error);
-
-            HttpResponse::InternalServerError().json(
-                serde_json::json!({
-                    "error": "Ошибка получения статуса участка"
-                }),
-            )
-        }
-    }
-}*/
-
 // ________________________________________________________________________________
 #[get("/api/monitoring/{area}/downtimes")]
 async fn get_monitoring_downtimes(
@@ -1665,7 +1634,7 @@ async fn get_monitoring_downtimes(
         request.Filter_DepartmentID = Some(area.department_id.to_string());
         request.WithEAMDowntimes = Some(1);
         request.ShowDeleted = Some(0);
-        request.MaxRows = Some(50);
+        // request.MaxRows = Some(50);
         request.Offset = Some(0);
 
         let post_res = client_http
