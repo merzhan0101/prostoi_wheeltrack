@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Простои участков КПЦ</title>
+<link rel="shortcut icon" href="/static/sit_logo_11.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="/static/css/all_downtimes.css?v={{ static_version }}">
+</head>
+<body>
+
+<main class="ad-wrap">
+
+    <header class="ad-head">
+        <div>
+            <p class="lbl">Горячий пролёт</p>
+            <h1>Простои участков КПЦ</h1>
+            <p class="ad-sub" id="ad-sub">Загрузка…</p>
+        </div>
+
+        <div class="ad-actions">
+            <label class="ad-date" title="Фильтр по дате начала простоя">
+                <i class="far fa-calendar-alt"></i>
+                <input type="date" id="ad-date">
+            </label>
+            <button type="button" class="ad-icon-btn ad-date-clear" id="ad-date-clear" title="Сбросить фильтр">
+                <i class="fas fa-times"></i>
+            </button>
+            <button type="button" class="ad-icon-btn" id="ad-refresh" title="Обновить данные">
+                <i class="fas fa-rotate"></i>
+            </button>
+            <button type="button" class="ad-btn ad-btn--green" id="ad-export" title="Скачать таблицу в Excel">
+                <i class="fas fa-file-excel"></i>
+                Экспорт в Excel
+            </button>
+            <a class="ad-btn" href="/monitoring">
+                <i class="fas fa-gauge-high"></i>
+                К мониторингу
+            </a>
+        </div>
+    </header>
+
+    <section class="ad-card">
+        <div class="ad-scroll">
+            <table class="ad-table">
+                <thead>
+                    <tr>
+                        <th>Участок</th>
+                        <th>Документ</th>
+                        <th>Оборудование</th>
+                        <th>Начало / Конец простоя</th>
+                        <th>Тип простоя</th>
+                        <th>Автор</th>
+                        <th>Комментарий</th>
+                    </tr>
+                </thead>
+                <tbody id="ad-body">
+                    <tr><td colspan="7" class="ad-loading">Загрузка данных...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</main>
+
+<script src="/static/js/all_downtimes.js?v={{ static_version }}"></script>
+</body>
+</html>

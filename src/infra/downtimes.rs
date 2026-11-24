@@ -4,7 +4,7 @@ use reqwest::Client;
 use serde_json::Value;
 use crate::structures::struct_pool_client::AppState;
 use crate::areas::find_area;
-use crate::infra::struct_template::{DowntimesTemplate, MonitoringTemplate};
+use crate::infra::struct_template::{AllDowntimesTemplate, DowntimesTemplate, MonitoringTemplate};
 use actix_web::{HttpResponse, Responder, get, post, web};
 use askama::Template;
 use uuid::Uuid;
@@ -1858,6 +1858,412 @@ async fn filter_monitoring_downtimes(
     }
 }
 
+// ________________________________________________________________________________
+// ПРОСТОИ ВСЕХ УЧАСТКОВ ===========================================================
+
+/// Без даты — последние 50 простоев по всем участкам.
+const ALL_DEFAULT_LIMIT: usize = 50;
+/// С датой — все простои дня; лимит только как предохранитель.
+const ALL_DAY_LIMIT: usize = 500;
+
+const ALL_TOIR_PAGE_SIZE: i32 = 200;
+/// Предохранитель: не больше стольких страниц за один запрос.
+const ALL_TOIR_MAX_PAGES: usize = 10;
+/// «Широкое» окно дат для показа последних записей независимо от дня.
+const ALL_WIDE_START: &str = "20000101000000";
+const ALL_WIDE_END: &str = "20991231235959";
+
+/// Выгружает из ТОИР все простои подразделения (страницами), оставляет нужные
+/// и сортирует по началу (новые сверху). Лимит применяет вызывающий код.
+///
+/// Порядок и лимит ТОИР нам не гарантированы, поэтому сортируем сами.
+/// `day` (`YYYYMMDD`) — оставить только простои, начавшиеся в этот день
+/// (ТОИР при фильтре по дате добавляет ещё и незакрытые простои других дней).
+async fn all_fetch_toir_rows(
+    pool: &AppState,
+    base: &strdn::GetDowntimesRequest,
+    department_id: &str,
+    day: Option<&str>,
+) -> Result<Vec<Value>, String> {
+    let client = Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .map_err(|e| format!("Ошибка создания HTTP-клиента: {e}"))?;
+
+    let mut rows: Vec<Value> = Vec::new();
+    let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for _ in 0..ALL_TOIR_MAX_PAGES {
+        let mut request = base.clone();
+        request.Filter_DepartmentID = Some(department_id.to_string());
+        request.WithEAMDowntimes = Some(1);
+        request.ShowDeleted = Some(0);
+        request.MaxRows = Some(ALL_TOIR_PAGE_SIZE);
+        request.Offset = Some(seen.len() as i32);
+
+        let response = client
+            .post(format!("{}/get_downtime_list", pool.toir_url))
+            .basic_auth(&pool.toir_login, Some(&pool.toir_password))
+            .json(&request)
+            .send()
+            .await
+            .map_err(|e| format!("ТОИР не отвечает: {e}"))?;
+
+        if !response.status().is_success() {
+            return Err(format!("ТОИР вернул статус {}", response.status()));
+        }
+
+        let json: Value = response
+            .json()
+            .await
+            .map_err(|e| format!("Некорректный ответ ТОИР: {e}"))?;
+
+        let page = json
+            .get("Data")
+            .and_then(|v| v.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        if page.is_empty() {
+            break;
+        }
+
+        // Если ТОИР игнорирует Offset и отдаёт то же самое — не зацикливаемся.
+        let mut added = 0;
+        for item in page {
+            let id = item
+                .get("EAMID")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_lowercase();
+            if seen.insert(id) {
+                rows.push(item);
+                added += 1;
+            }
+        }
+        if added == 0 {
+            break;
+        }
+    }
+
+    rows.retain(|item| {
+        let same_department = item
+            .get("DepartmentID")
+            .and_then(|v| v.as_str())
+            .is_some_and(|d| d.eq_ignore_ascii_case(department_id));
+
+        let same_day = match day {
+            Some(day) => item
+                .get("StartDateTime")
+                .and_then(|v| v.as_str())
+                .is_some_and(|s| s.starts_with(day)),
+            None => true,
+        };
+
+        same_department && same_day
+    });
+
+    // StartDateTime в формате YYYYMMDDHHMMSS — строки сравниваются как даты.
+    rows.sort_by(|a, b| {
+        let key = |v: &Value| {
+            v.get("StartDateTime")
+                .and_then(|s| s.as_str())
+                .unwrap_or("")
+                .to_string()
+        };
+        key(b).cmp(&key(a))
+    });
+
+    Ok(rows)
+}
+
+/// Принадлежит ли строка ТОИР одному из перечисленных единиц оборудования.
+fn all_row_has_equipment(item: &Value, equipment_ids: &[&str]) -> bool {
+    let equipment = item
+        .get("EquipmentID")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+
+    equipment_ids
+        .iter()
+        .any(|id| id.eq_ignore_ascii_case(equipment))
+}
+
+#[derive(serde::Deserialize)]
+struct AllDowntimesQuery {
+    /// `YYYYMMDD` или `YYYY-MM-DD`
+    date: Option<String>,
+}
+
+#[get("/all-downtimes")]
+async fn render_all_downtimes_page() -> impl Responder {
+    match AllDowntimesTemplate::new().render() {
+        Ok(html) => HttpResponse::Ok()
+            .content_type("text/html; charset=utf-8")
+            .body(html),
+
+        Err(error) => {
+            eprintln!("Ошибка отображения страницы: {}", error);
+
+            HttpResponse::InternalServerError()
+                .body("Ошибка отображения страницы")
+        }
+    }
+}
+
+/// Разбор параметра `date`: `Ok(None)` — даты нет, `Err` — некорректная дата.
+fn parse_all_day(date: Option<&str>) -> Result<Option<String>, ()> {
+    match date.map(|d| d.replace('-', "")) {
+        Some(d) if d.is_empty() => Ok(None),
+        Some(d) if d.len() == 8 && d.bytes().all(|b| b.is_ascii_digit()) => Ok(Some(d)),
+        Some(_) => Err(()),
+        None => Ok(None),
+    }
+}
+
+/// Простои всех участков: без даты — последние 50, с датой — все за день.
+/// Ошибка — уже готовый HTTP-ответ.
+async fn load_all_downtimes(
+    pool: &AppState,
+    day: Option<&str>,
+) -> Result<Vec<strdn::AreaDowntime>, HttpResponse> {
+    let limit = if day.is_some() { ALL_DAY_LIMIT } else { ALL_DEFAULT_LIMIT };
+
+    if pool.local_mode {
+        return db::get_all_areas_downtimes_local(pool, day, limit)
+            .await
+            .map_err(|error| {
+                eprintln!("❌ Ошибка загрузки простоев всех участков: {}", error);
+                HttpResponse::InternalServerError().json(serde_json::json!({
+                    "error": "Ошибка загрузки данных"
+                }))
+            });
+    }
+
+    // Режим ТОИР: одна выгрузка на подразделение, затем деление по участкам.
+    let (from, to) = match day {
+        Some(d) => (format!("{d}000000"), format!("{d}235959")),
+        None => (ALL_WIDE_START.to_string(), ALL_WIDE_END.to_string()),
+    };
+
+    let mut departments: Vec<&str> = db::MONITORING_AREAS
+        .iter()
+        .map(|area| area.department_id)
+        .collect();
+    departments.sort_unstable();
+    departments.dedup();
+
+    let mut result: Vec<strdn::AreaDowntime> = Vec::new();
+
+    for department_id in departments {
+        let request = strdn::GetDowntimesRequest {
+            Filter_StartDate: Some(from.clone()),
+            Filter_EndDate: Some(to.clone()),
+            ..Default::default()
+        };
+
+        let rows = all_fetch_toir_rows(pool, &request, department_id, day)
+            .await
+            .map_err(|error| {
+                eprintln!("Ошибка загрузки простоев из ТОИР: {}", error);
+                HttpResponse::BadGateway().json(serde_json::json!({
+                    "error": "ТОИР не отвечает или вернул некорректный ответ"
+                }))
+            })?;
+
+        for area in db::MONITORING_AREAS
+            .iter()
+            .filter(|area| area.department_id.eq_ignore_ascii_case(department_id))
+        {
+            // rows уже отсортированы: новые сверху.
+            let area_rows: Vec<Value> = rows
+                .iter()
+                .filter(|item| all_row_has_equipment(item, area.equipment_ids))
+                .take(limit)
+                .cloned()
+                .collect();
+
+            let json = serde_json::json!({ "Data": area_rows });
+
+            let items = db::get_downtimes_vec_jsonn_by_equipment(pool, json, area.equipment_ids)
+                .await
+                .map_err(|error| {
+                    eprintln!("Ошибка обработки простоев: {}", error);
+                    HttpResponse::InternalServerError().json(serde_json::json!({
+                        "error": "Ошибка обработки данных"
+                    }))
+                })?;
+
+            result.extend(items.into_iter().map(|downtime| strdn::AreaDowntime {
+                AreaName: area.name.to_string(),
+                Downtime: downtime,
+            }));
+        }
+    }
+
+    result.sort_by(|a, b| b.Downtime.StartDateTime.cmp(&a.Downtime.StartDateTime));
+    result.truncate(limit);
+
+    Ok(result)
+}
+
+#[get("/api/all-downtimes")]
+async fn get_all_downtimes(
+    pool: web::Data<AppState>,
+    query: web::Query<AllDowntimesQuery>,
+) -> impl Responder {
+    let Ok(day) = parse_all_day(query.date.as_deref()) else {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Некорректная дата"
+        }));
+    };
+
+    match load_all_downtimes(&pool, day.as_deref()).await {
+        Ok(data) => HttpResponse::Ok().json(data),
+        Err(response) => response,
+    }
+}
+
+// ЭКСПОРТ В EXCEL ===================================================================
+
+/// `YYYYMMDDHHMMSS` -> дата-время для Excel.
+fn parse_toir_datetime(value: Option<&str>) -> Option<chrono::NaiveDateTime> {
+    chrono::NaiveDateTime::parse_from_str(value?, "%Y%m%d%H%M%S").ok()
+}
+
+fn build_all_downtimes_xlsx(
+    items: &[strdn::AreaDowntime],
+) -> Result<Vec<u8>, rust_xlsxwriter::XlsxError> {
+    use chrono::{Datelike, Timelike};
+    use rust_xlsxwriter::{Color, ExcelDateTime, Format, FormatAlign, FormatBorder, Workbook};
+
+    let mut workbook = Workbook::new();
+    let sheet = workbook.add_worksheet();
+    sheet.set_name("Простои")?;
+
+    let header_format = Format::new()
+        .set_bold()
+        .set_background_color(Color::RGB(0xE2E8F0))
+        .set_border_bottom(FormatBorder::Thin)
+        .set_align(FormatAlign::Center)
+        .set_align(FormatAlign::VerticalCenter)
+        .set_text_wrap();
+    let text_format = Format::new()
+        .set_text_wrap()
+        .set_align(FormatAlign::Top);
+    let datetime_format = Format::new()
+        .set_num_format("dd.mm.yyyy hh:mm")
+        .set_align(FormatAlign::Left)
+        .set_align(FormatAlign::Top);
+
+    let headers = [
+        "Участок",
+        "Документ",
+        "Оборудование",
+        "Начало простоя",
+        "Конец простоя",
+        "Длительность",
+        "Тип простоя",
+        "Автор",
+        "Комментарий",
+    ];
+    let widths = [26.0, 16.0, 38.0, 18.0, 18.0, 14.0, 26.0, 22.0, 50.0];
+
+    for (col, (title, width)) in headers.iter().zip(widths).enumerate() {
+        sheet.write_string_with_format(0, col as u16, *title, &header_format)?;
+        sheet.set_column_width(col as u16, width)?;
+    }
+
+    for (index, item) in items.iter().enumerate() {
+        let row = (index + 1) as u32;
+        let d = &item.Downtime;
+
+        sheet.write_string_with_format(row, 0, &item.AreaName, &text_format)?;
+        sheet.write_string_with_format(row, 1, d.EAMDocName.as_deref().unwrap_or(""), &text_format)?;
+        sheet.write_string_with_format(row, 2, d.EquipmentName.as_deref().unwrap_or(""), &text_format)?;
+
+        let start = parse_toir_datetime(d.StartDateTime.as_deref());
+        let end = parse_toir_datetime(d.EndDateTime.as_deref());
+
+        for (col, value) in [(3u16, start), (4u16, end)] {
+            if let Some(value) = value {
+                let excel = ExcelDateTime::from_ymd(
+                    value.year() as u16,
+                    value.month() as u8,
+                    value.day() as u8,
+                )?
+                .and_hms(value.hour() as u16, value.minute() as u8, value.second() as f64)?;
+
+                sheet.write_datetime_with_format(row, col, &excel, &datetime_format)?;
+            }
+        }
+
+        if let (Some(start), Some(end)) = (start, end) {
+            let minutes = (end - start).num_minutes();
+            if minutes >= 0 {
+                sheet.write_string_with_format(
+                    row,
+                    5,
+                    format!("{} ч {} мин", minutes / 60, minutes % 60),
+                    &text_format,
+                )?;
+            }
+        } else if start.is_some() {
+            sheet.write_string_with_format(row, 5, "не завершён", &text_format)?;
+        }
+
+        sheet.write_string_with_format(row, 6, d.DowntimeTypeName.as_deref().unwrap_or(""), &text_format)?;
+        sheet.write_string_with_format(row, 7, d.Author.as_deref().unwrap_or(""), &text_format)?;
+        sheet.write_string_with_format(row, 8, d.Comment.as_deref().unwrap_or(""), &text_format)?;
+    }
+
+    sheet.set_row_height(0, 24)?;
+    sheet.set_freeze_panes(1, 0)?;
+    sheet.autofilter(0, 0, items.len() as u32, (headers.len() - 1) as u16)?;
+
+    workbook.save_to_buffer()
+}
+
+#[get("/api/all-downtimes/export")]
+async fn export_all_downtimes(
+    pool: web::Data<AppState>,
+    query: web::Query<AllDowntimesQuery>,
+) -> impl Responder {
+    let Ok(day) = parse_all_day(query.date.as_deref()) else {
+        return HttpResponse::BadRequest().json(serde_json::json!({
+            "error": "Некорректная дата"
+        }));
+    };
+
+    let items = match load_all_downtimes(&pool, day.as_deref()).await {
+        Ok(items) => items,
+        Err(response) => return response,
+    };
+
+    let bytes = match build_all_downtimes_xlsx(&items) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("Ошибка формирования Excel: {}", error);
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Ошибка формирования файла Excel"
+            }));
+        }
+    };
+
+    let filename = match &day {
+        Some(d) => format!("downtimes_{}-{}-{}.xlsx", &d[0..4], &d[4..6], &d[6..8]),
+        None => "downtimes_last_50.xlsx".to_string(),
+    };
+
+    HttpResponse::Ok()
+        .content_type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        .insert_header((
+            "Content-Disposition",
+            format!("attachment; filename=\"{filename}\""),
+        ))
+        .body(bytes)
+}
+
 pub fn conf_downtimes(cfg: &mut web::ServiceConfig) {
     cfg.service(render_downtimes_page);
     cfg.service(get_last_downtimes);
@@ -1873,6 +2279,10 @@ pub fn conf_downtimes(cfg: &mut web::ServiceConfig) {
     cfg.service(get_area_monitoring);
     cfg.service(get_monitoring_downtimes);
     cfg.service(filter_monitoring_downtimes);
+    // ==== простои всех участков ====
+    cfg.service(render_all_downtimes_page);
+    cfg.service(get_all_downtimes);
+    cfg.service(export_all_downtimes);
     // ==== инструкция ====
     cfg.route("/instruction_downtime", web::get().to(open_pdf));
 }

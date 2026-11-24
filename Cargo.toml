@@ -23,5 +23,6 @@ uuid = { version = "1.7", features = ["v4", "fast-rng"] }
 hex = "0.4.3"
 bb8 = "=0.9.1"
 bb8-tiberius = "=0.16.0"
+rust_xlsxwriter = "0.104.0"
 [build-dependencies]
 chrono = "0.4"

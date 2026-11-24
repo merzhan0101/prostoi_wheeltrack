@@ -428,3 +428,20 @@ body[data-filter="stop"] .mn-eq--stop { opacity: 1; }
     .mn-grid { grid-template-columns: 1fr; }
     .mn-clock { margin-left: 0; text-align: left; }
 }
+
+.ad-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 16px;
+    border-radius: 8px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background .15s;
+}
+
+.ad-btn:hover { background: #1d4ed8; }

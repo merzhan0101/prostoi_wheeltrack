@@ -1452,6 +1452,152 @@ pub async fn get_monitoring_downtimes_local(
     Ok(result)
 }
 
+// _______________________________________________________________________________________________________
+/// Простои сразу по всем участкам мониторинга (страница «Простои всех участков»).
+/// Новые сверху, не более `limit` записей. `start_date` (`YYYYMMDD`) — только
+/// простои, начавшиеся в этот день.
+pub async fn get_all_areas_downtimes_local(
+    pool: &AppState,
+    start_date: Option<&str>,
+    limit: usize,
+) -> Result<Vec<dsr::AreaDowntime>> {
+    let mut client = pool.pool_raport.get().await?;
+
+    let day_range = match start_date {
+        Some(raw) => {
+            let day = chrono::NaiveDate::parse_from_str(raw, "%Y%m%d")?;
+            let start = day.and_hms_opt(0, 0, 0).unwrap();
+            Some((start, start + chrono::Duration::days(1)))
+        }
+        None => None,
+    };
+
+    // Оборудование -> название участка.
+    let mut area_by_equipment: std::collections::HashMap<Uuid, &'static str> =
+        std::collections::HashMap::new();
+    for area in MONITORING_AREAS {
+        for id in area.equipment_ids {
+            if let Ok(uuid) = Uuid::parse_str(id) {
+                area_by_equipment.insert(uuid, area.name);
+            }
+        }
+    }
+
+    if area_by_equipment.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let equipment_ids: Vec<Vec<u8>> = area_by_equipment
+        .keys()
+        .map(|uuid| uuid.as_bytes().to_vec())
+        .collect();
+
+    let placeholders: Vec<String> = (1..=equipment_ids.len())
+        .map(|i| format!("@P{}", i))
+        .collect();
+
+    let date_filter = if day_range.is_some() {
+        format!(
+            "AND d.StartDateTime >= @P{} AND d.StartDateTime < @P{}",
+            equipment_ids.len() + 1,
+            equipment_ids.len() + 2
+        )
+    } else {
+        String::new()
+    };
+
+    let sql = format!(
+        "
+        SELECT TOP {limit}
+            d.Id as EAMID,
+            d.EquipmentID,
+            d.EAMDocName,
+            e.Name as EquipmentName,
+            dep.Name as DepartmentName,
+            d.StartDateTime,
+            d.EndDateTime,
+            dt.Name as DowntimeTypeName,
+            d.Author,
+            d.Comment
+        FROM Downtimes d
+        JOIN DTEquipments e ON d.EquipmentID = e.Id
+        LEFT JOIN DTDepartments dep ON d.DepartmentID = dep.Id
+        LEFT JOIN DowntimesTypes dt ON d.DowntimeTypeID = dt.Id
+        WHERE d.EquipmentID IN ({})
+        {}
+        ORDER BY d.StartDateTime DESC
+        ",
+        placeholders.join(", "),
+        date_filter
+    );
+
+    let mut query = Query::new(sql);
+    for id in &equipment_ids {
+        query.bind(id.clone());
+    }
+    if let Some((from, to)) = day_range {
+        query.bind(from);
+        query.bind(to);
+    }
+
+    let mut result = Vec::new();
+    let mut stream = query.query(&mut client).await?;
+
+    while let Some(item) = stream.try_next().await? {
+        if let QueryItem::Row(row) = item {
+            let Some(equipment_uuid) = row
+                .get::<&[u8], _>("EquipmentID")
+                .and_then(|bytes| Uuid::from_slice(bytes).ok())
+            else {
+                continue;
+            };
+
+            let Some(area_name) = area_by_equipment.get(&equipment_uuid) else {
+                continue;
+            };
+
+            let mut data = dsr::DowntimesRefactor::default();
+
+            if let Some(bytes) = row.get::<&[u8], _>("EAMID") {
+                if let Ok(uuid) = Uuid::from_slice(bytes) {
+                    data.EAMID = Some(uuid.to_string());
+                }
+            }
+
+            data.EAMDocName = row.get("EAMDocName").map(|s: &str| s.to_string());
+            data.EquipmentName = row.get("EquipmentName").map(|s: &str| s.to_string());
+            data.DepartmentName = row.get("DepartmentName").map(|s: &str| s.to_string());
+
+            let start = row.get::<chrono::NaiveDateTime, _>("StartDateTime");
+            let end = row.get::<chrono::NaiveDateTime, _>("EndDateTime");
+
+            data.StartDateTime = start.map(|dt| dt.format("%Y%m%d%H%M%S").to_string());
+            data.EndDateTime = end.map(|dt| dt.format("%Y%m%d%H%M%S").to_string());
+
+            if let (Some(start), Some(end)) = (start, end) {
+                let duration = end - start;
+                data.Duration = Some(format!(
+                    "{}ч {}м",
+                    duration.num_hours(),
+                    duration.num_minutes() % 60
+                ));
+            }
+
+            data.DowntimeTypeName = row.get("DowntimeTypeName").map(|s: &str| s.to_string());
+            data.Author = row.get("Author").map(|s: &str| s.to_string());
+            data.Comment = row.get("Comment").map(|s: &str| s.to_string());
+            data.Deleted = Some(0);
+            data.EAMDowntime = None;
+
+            result.push(dsr::AreaDowntime {
+                AreaName: area_name.to_string(),
+                Downtime: data,
+            });
+        }
+    }
+
+    Ok(result)
+}
 
 // prev local
 /*pub async fn update_insert(pool: &AppState, body: Value, result_http: Value) -> Result<()> {

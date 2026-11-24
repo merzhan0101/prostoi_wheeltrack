@@ -81,6 +81,15 @@ pub struct DowntimesRefactor {
     pub Comment: Option<String>,    
 }
 
+/// Простой + название участка (страница «Простои всех участков»).
+#[allow(non_snake_case)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AreaDowntime {
+    pub AreaName: String,
+    #[serde(flatten)]
+    pub Downtime: DowntimesRefactor,
+}
+
 // __________________________
 
 #[allow(non_snake_case)]

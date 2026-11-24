@@ -40,3 +40,19 @@ impl MonitoringTemplate {
         }
     }
 }
+
+
+// ВСЕ ПРОСТОИ ========================================================================
+#[derive(Template)]
+#[template(path = "all_downtimes.html")]
+pub struct AllDowntimesTemplate {
+    pub static_version: &'static str,
+}
+
+impl AllDowntimesTemplate {
+    pub fn new() -> Self {
+        Self {
+            static_version: BUILD_VERSION,
+        }
+    }
+}
